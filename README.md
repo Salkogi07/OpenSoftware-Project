@@ -152,7 +152,14 @@ C:\Users\<사용자이름>\AppData\Local\Android\sdk
    C:\Users\<사용자이름>\AppData\Local\Android\sdk\cmdline-tools\latest\bin
    ```
 
-4. 열린 창을 모두 `확인`으로 닫고 **VS Code를 완전히 종료했다가 다시 실행**합니다.
+4. `Path` 편집 창을 `확인`으로 닫고, 다시 **사용자 변수** 목록 아래의 `새로 만들기`를 눌러 아래처럼 `JAVA_HOME`을 추가합니다. (`avdmanager`가 Java를 찾을 때 필요하며, Java는 Android Studio에 포함되어 있어 따로 설치할 필요가 없습니다.)
+
+   ```text
+   변수 이름: JAVA_HOME
+   변수 값:   C:\Program Files\Android\Android Studio\jbr
+   ```
+
+5. 열린 창을 모두 `확인`으로 닫고 **VS Code를 완전히 종료했다가 다시 실행**합니다.
 
 ✅ **확인**: 터미널에서 아래 두 명령이 모두 버전을 출력하면 성공입니다.
 
@@ -297,6 +304,14 @@ Flutter SDK 경로가 PATH에 등록되지 않았거나, 등록 후 VS Code를 �
 
 1. VS Code를 완전히 종료했다가 다시 실행합니다.
 2. 그래도 안 되면 ③단계의 **Add SDK to PATH**를 다시 진행하거나, ⑦단계와 같은 방법으로 `<SDK 폴더>\flutter\bin` 경로를 `Path`에 직접 추가합니다.
+
+</details>
+
+<details>
+<summary><strong>ERROR: JAVA_HOME is not set (avdmanager 실행 시)</strong></summary>
+
+`avdmanager`가 Java 위치를 찾지 못한 경우입니다. ⑦단계의 4번처럼 사용자 변수에 `JAVA_HOME`을 `C:\Program Files\Android\Android Studio\jbr`로 추가한 뒤 VS Code를 다시 실행합니다.
+해당 폴더가 없다면 Android Studio를 다른 경로에 설치한 것이므로, 그 설치 폴더 안의 `jbr` 폴더 경로를 넣습니다.
 
 </details>
 
