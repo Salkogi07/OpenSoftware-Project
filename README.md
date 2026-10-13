@@ -365,6 +365,8 @@ Windows 실행 창 크기는 `windows/runner/main.cpp`에서 설정합니다. �
 
 </details>
 
+노션 (https://app.notion.com/p/3df530af0e9c8093ac00fd10905bab4e?v=3df530af0e9c804d9b21000ca87d9c3d)
+
 ---
 
 ## 변경 작업 규칙
