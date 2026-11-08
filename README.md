@@ -317,7 +317,18 @@ flutter run -d <기기ID> --dart-define-from-file=env.json
 
 ### 저장 표와 접근 권한
 
-`supabase/migrations/`의 SQL 파일에 들어 있습니다. 대시보드 `SQL Editor`에 파일 이름 순서대로 붙여 넣어 실행하거나, `npx supabase db push`로 적용합니다.
+`supabase/migrations/`의 SQL 파일에 들어 있습니다. **이미 팀 수파베이스 프로젝트에 적용되어 있으니** 표를 새로 추가하거나 바꿀 때만 아래처럼 적용합니다.
+
+1. 새 SQL 파일을 `supabase/migrations/`에 `날짜시간_설명.sql` 이름으로 추가합니다.
+2. 대시보드 `Connect` → `Direct` → **Session pooler** 주소를 `supabase/.env`에 `SUPABASE_DB_URL=...`로 저장합니다. (깃 제외 파일, 비밀번호의 `@`는 `%40`으로 바꿔 적기)
+3. Git Bash에서 실행합니다.
+
+   ```bash
+   set -a; . supabase/.env; set +a
+   npx supabase@latest db push --remote="$SUPABASE_DB_URL"
+   ```
+
+대시보드 `SQL Editor`에 SQL을 직접 붙여 넣어도 되지만, 그러면 어떤 파일이 적용됐는지 기록이 남지 않으니 위 방법을 권장합니다.
 
 | 표 | 내용 | 접근 권한 |
 |---|---|---|
