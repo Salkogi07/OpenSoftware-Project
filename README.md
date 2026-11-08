@@ -351,6 +351,18 @@ sdkmanager --install "ndk/28.2.13676358"
 </details>
 
 <details>
+<summary><strong>flutter pub get 시 version solving failed (SDK 버전 불일치)</strong></summary>
+
+`The current Dart SDK version is 3.13.4. Because ... requires SDK version ^3.13.5` 같은 메시지가 나오면, 내 Flutter 버전과 `pubspec.yaml`의 `environment` 버전이 맞지 않는 것입니다.
+
+1. `flutter --version`으로 내 버전을 확인합니다. [개발 환경](#개발-환경) 표의 버전(Flutter 3.47.5 / Dart 3.13.4)보다 낮으면 `flutter upgrade`를 실행합니다.
+2. 반대로 `pubspec.yaml`의 `sdk:` 값이 표보다 높게 바뀌어 있다면, 누군가 더 새로운 Flutter로 프로젝트를 다시 만든 것입니다. 표의 값으로 되돌립니다.
+
+> ⚠️ `flutter create`로 프로젝트를 새로 만들어 덮어쓰지 말고, 이 저장소를 clone해서 `lib/` 안에서 작업하세요. 새로 만들면 SDK 버전과 패키지 이름이 바뀌어 다른 팀원 PC에서 실행되지 않습니다.
+
+</details>
+
+<details>
 <summary><strong>Java restricted method 경고가 나옴</strong></summary>
 
 `java.lang.System::load` 관련 경고만 뜨고 빌드가 계속 진행된다면 치명적 오류가 아닙니다.
