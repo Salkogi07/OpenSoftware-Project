@@ -2,6 +2,12 @@
 -- 문제·주제: 누구나 보기만 가능 (추가·수정은 대시보드나 관리자 키로만)
 -- 사용자 정보·학습 기록: 로그인한 본인 것만 보고 고칠 수 있음
 
+-- 표를 앱(Data API)에 공개하는 권한. 'Automatically expose new tables'를 끈 프로젝트에서도 동작하도록 직접 줌
+-- 실제로 어떤 줄을 볼 수 있는지는 아래 RLS 정책이 정함
+grant select on public.topics, public.questions to anon, authenticated;
+grant select, insert, update on public.profiles to authenticated;
+grant select, insert, update, delete on public.attempts, public.wrong_answers, public.attendance to authenticated;
+
 alter table public.profiles      enable row level security;
 alter table public.topics        enable row level security;
 alter table public.questions     enable row level security;
