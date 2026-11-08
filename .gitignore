@@ -46,3 +46,13 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# 프로젝트 로컬 Flutter SDK (run.ps1)
+.flutter-sdk/
+
+# 수파베이스 키 등 비밀 정보 (env.example.json만 커밋)
+env.json
+.env
+.env.*
+supabase/.temp/
+supabase/.branches/
