@@ -19,9 +19,10 @@
 3. [처음 세팅하기](#처음-세팅하기)
 4. [삼성 휴대폰 비율로 테스트하기](#삼성-휴대폰-비율로-테스트하기)
 5. [실행 및 테스트 명령어](#실행-및-테스트-명령어)
-6. [문제 해결](#문제-해결)
-7. [변경 작업 규칙](#변경-작업-규칙)
-8. [참고 자료](#참고-자료)
+6. [수파베이스 연결](#수파베이스-연결)
+7. [문제 해결](#문제-해결)
+8. [변경 작업 규칙](#변경-작업-규칙)
+9. [참고 자료](#참고-자료)
 
 ---
 
@@ -204,13 +205,14 @@ VS Code에서 `File` → `Open Folder`로 내려받은 `OpenSoftware-Project` �
 VS Code 터미널에서 실행합니다.
 
 ```powershell
+copy env.example.json env.json   # 처음 한 번만 (수파베이스 키 파일, 아래 '수파베이스 연결' 참고)
 flutter pub get
 flutter devices
-flutter run -d <기기ID>
+flutter run -d <기기ID> --dart-define-from-file=env.json
 ```
 
 - `flutter devices` 결과에 나온 기기 ID(예: `emulator-5554`)를 `<기기ID>` 자리에 넣습니다.
-- VS Code 오른쪽 아래 상태 바에서 기기를 선택한 뒤 `F5`를 눌러도 됩니다.
+- VS Code 오른쪽 아래 상태 바에서 기기를 선택한 뒤 `F5`를 눌러도 됩니다. (`env.json`을 자동으로 읽도록 설정되어 있습니다.)
 - 실행 중 저장하거나 터미널에서 `r`을 누르면 **핫 리로드**(수정 내용 바로 반영), `R`을 누르면 앱 전체 재시작입니다.
 
 ✅ **확인**: 기기 화면에 앱이 뜨면 모든 세팅이 끝났습니다. 🎉
@@ -292,6 +294,52 @@ flutter run -d <기기ID>
 | 위젯 테스트 | `flutter test` |
 
 > 📌 `test/widget_test.dart`는 앱을 Android에서 실행하는 파일이 아니라 위젯 동작을 자동 검증하는 테스트 파일입니다. 앱의 실제 시작점은 `lib/main.dart`입니다.
+
+---
+
+## 수파베이스 연결
+
+### 키 넣기 (모든 팀원)
+
+1. `env.example.json`을 복사해 `env.json`을 만듭니다. (`copy env.example.json env.json`)
+2. 수파베이스 대시보드 → `Project Settings` → `API Keys`에서 아래 두 값을 `env.json`에 넣습니다.
+
+   ```json
+   {
+     "SUPABASE_URL": "https://<프로젝트ID>.supabase.co",
+     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_..."
+   }
+   ```
+
+- `env.json`은 `.gitignore`에 들어 있어 깃허브에 올라가지 않습니다. 값은 팀 채팅이 아니라 구글 드라이브 등으로 따로 공유합니다.
+- 앱에는 **publishable 키(예전 이름 anon 키)만** 넣습니다. **secret 키(service_role)는 앱·깃허브 어디에도 넣지 마세요.** 이 키가 있으면 아래 접근 권한을 모두 무시할 수 있습니다.
+- 키를 비워 두면 수파베이스 연결 없이 화면만 실행됩니다. (화면 작업할 때는 그대로 써도 됩니다.)
+
+### 저장 표와 접근 권한
+
+`supabase/migrations/`의 SQL 파일에 들어 있습니다. **이미 팀 수파베이스 프로젝트에 적용되어 있으니** 표를 새로 추가하거나 바꿀 때만 아래처럼 적용합니다.
+
+1. 새 SQL 파일을 `supabase/migrations/`에 `날짜시간_설명.sql` 이름으로 추가합니다.
+2. 대시보드 `Connect` → `Direct` → **Session pooler** 주소를 `supabase/.env`에 `SUPABASE_DB_URL=...`로 저장합니다. (깃 제외 파일, 비밀번호의 `@`는 `%40`으로 바꿔 적기)
+3. Git Bash에서 실행합니다.
+
+   ```bash
+   set -a; . supabase/.env; set +a
+   npx supabase@latest db push --remote="$SUPABASE_DB_URL"
+   ```
+
+대시보드 `SQL Editor`에 SQL을 직접 붙여 넣어도 되지만, 그러면 어떤 파일이 적용됐는지 기록이 남지 않으니 위 방법을 권장합니다.
+
+| 표 | 내용 | 접근 권한 |
+|---|---|---|
+| `profiles` | 사용자 정보 (로그인 계정 1개당 1줄) | 본인 것만 보기·만들기·고치기 |
+| `topics` | 주제 3가지 | 누구나 보기만 |
+| `questions` | 문제 (엑셀 칸과 같음: 번호, 주제, 난이도, 문제, 보기 1~4, 정답, 해설, 예문) | 누구나 보기만 |
+| `attempts` | 문제 푼 기록 (맞았는지, 걸린 시간) | 본인 것만 |
+| `wrong_answers` | 틀린 문제 (어휘장: 틀린 횟수, 별표, 복습 체크) | 본인 것만 |
+| `attendance` | 출석 날짜 (한국 날짜 기준) | 본인 것만 |
+
+> 📌 문제를 넣거나 고치는 것은 앱에서 할 수 없습니다. 대시보드의 `Table Editor`(CSV 가져오기)나 `SQL Editor`를 사용합니다.
 
 ---
 
