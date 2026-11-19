@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'learning/learning_repository.dart';
+
 part 'home_page.dart';
 part 'my_page.dart';
 
@@ -494,6 +496,7 @@ class Word {
     required this.distractor,
     required this.example,
     required this.alternative,
+    this.id,
     this.difficulty,
     this.prompt,
     this.choices,
@@ -502,6 +505,7 @@ class Word {
   });
 
   factory Word.fromJson(Map<String, dynamic> json) => Word(
+    id: json['id'] as String,
     topic: json['topic'] as String,
     difficulty: json['difficulty'] as String,
     prompt: json['prompt'] as String,
@@ -515,6 +519,8 @@ class Word {
     alternative: '',
   );
 
+  /// 문제 번호(예: ER-001). 수파베이스에 푼 결과를 저장할 때 씀
+  final String? id;
   final String? difficulty;
   final String? prompt;
   final List<String>? choices;
@@ -591,6 +597,9 @@ class _QuizScreenState extends State<QuizScreen> {
   bool showingExplanation = false;
   String? selectedChoice;
   final List<bool> answers = [];
+  // 푼 결과 저장용: 문제가 보인 뒤 걸린 시간, 이미 저장한 문제 위치(같은 문제를 두 번 저장하지 않게)
+  final answerTimer = Stopwatch()..start();
+  int? savedQuestionIndex;
 
   @override
   void dispose() {
@@ -608,6 +617,14 @@ class _QuizScreenState extends State<QuizScreen> {
     if (choice != word.correctChoice) {
       _LibraryScope.read(context)?.recordMistake(word);
     }
+    if (word.id case final id? when savedQuestionIndex != questionIndex) {
+      savedQuestionIndex = questionIndex;
+      learningRepository.recordAnswer(
+        questionId: id,
+        isCorrect: choice == word.correctChoice,
+        timeSpentMs: answerTimer.elapsedMilliseconds,
+      );
+    }
     final lastQuestion = questionIndex == widget.words.length - 1;
     final advance = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
@@ -622,6 +639,7 @@ class _QuizScreenState extends State<QuizScreen> {
     if (!mounted) return;
     if (advance == true) answers.add(choice == word.correctChoice);
     if (advance == true && lastQuestion) {
+      learningRepository.markAttendance();
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) => CompletionScreen(
@@ -637,7 +655,10 @@ class _QuizScreenState extends State<QuizScreen> {
     setState(() {
       showingExplanation = false;
       selectedChoice = null;
-      if (advance == true) questionIndex++;
+      if (advance == true) {
+        questionIndex++;
+        answerTimer.reset();
+      }
     });
     if (advance == true && scrollController.hasClients) {
       scrollController.jumpTo(0);
