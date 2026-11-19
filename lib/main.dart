@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme.dart';
-import 'main_navigation_screen.dart';
+import 'auth_screen.dart';
 
 // env.json에서 --dart-define-from-file로 주입됩니다. (README '수파베이스 연결' 참고)
 // 앱에는 공개용 publishable(예전 이름 anon) 키만 넣습니다. secret(service_role) 키는 절대 넣지 마세요.
@@ -28,7 +28,7 @@ class ErreApp extends StatelessWidget {
       title: '에르',
       debugShowCheckedModeBanner: false,
       theme: appTheme,
-      home: const MainNavigationScreen(),
+      home: const AuthScreen(),
     );
   }
 }

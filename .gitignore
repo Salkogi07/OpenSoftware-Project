@@ -56,3 +56,7 @@ env.json
 .env.*
 supabase/.temp/
 supabase/.branches/
+
+# 빌드 결과물과 개인 편집기 설정
+android/build/
+.vscode/settings.json
