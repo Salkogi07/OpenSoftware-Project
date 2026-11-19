@@ -15,7 +15,7 @@ void main() {
         authOptions: const FlutterAuthClientOptions(
           autoRefreshToken: false,
           detectSessionInUri: false,
-          localStorage: EmptyLocalStorage(),
+          persistSession: false,
         ),
       );
       addTearDown(supabase.dispose);
