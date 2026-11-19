@@ -348,7 +348,7 @@ class RecordScreen extends StatelessWidget {
                 ? '최근 7일 동안 푼 문제가 없어요. 학습 탭에서 시작해 보세요.'
                 : '최근 7일 동안 $total문제를 풀었어요.',
             child: SizedBox(
-              height: 110,
+              height: 130,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -362,12 +362,27 @@ class RecordScreen extends StatelessWidget {
                             style: text.labelLarge,
                           ),
                           const SizedBox(height: 4),
-                          Container(
-                            height: 60 * weekly.dailyCounts[i] / maxCount + 2,
-                            margin: const EdgeInsets.symmetric(horizontal: 6),
-                            decoration: BoxDecoration(
-                              color: i == 6 ? green : const Color(0xffbce6d6),
-                              borderRadius: BorderRadius.circular(6),
+                          // 숫자·요일 글자를 놓고 남은 높이 안에서 막대가 비율대로 차서 넘치지 않음
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: FractionallySizedBox(
+                                heightFactor: math.max(
+                                  0.04,
+                                  weekly.dailyCounts[i] / maxCount,
+                                ),
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: i == 6
+                                        ? green
+                                        : const Color(0xffbce6d6),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 6),
