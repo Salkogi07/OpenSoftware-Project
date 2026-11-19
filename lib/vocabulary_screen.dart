@@ -255,7 +255,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
+                                    // 공간이 모자라면 오답 배지가 다음 줄로 내려감 (Row면 화면 밖으로 넘침)
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
                                       children: [
                                         Text(
                                           item.word,
@@ -270,7 +274,6 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                                 : Colors.black87,
                                           ),
                                         ),
-                                        const SizedBox(width: 8),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 6,

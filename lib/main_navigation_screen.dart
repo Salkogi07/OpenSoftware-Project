@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
+import 'vocabulary_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -93,7 +94,25 @@ class HomeScreen extends StatelessWidget {
 class StudyScreen extends StatelessWidget {
   const StudyScreen({super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('학습 탭')), body: const Center(child: Text('학습 화면 내용이 들어갈 자리입니다')));
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('학습 탭')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('학습 화면 내용이 들어갈 자리입니다'),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const VocabularyScreen()),
+                ),
+                icon: const Icon(Icons.bookmark_outline),
+                label: const Text('단어장 복습'),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 class RecordScreen extends StatelessWidget {
