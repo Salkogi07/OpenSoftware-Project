@@ -16,6 +16,7 @@ void main() {
           autoRefreshToken: false,
           detectSessionInUri: false,
           persistSession: false,
+          pkceAsyncStorage: _TestPkceStorage(),
         ),
       );
       addTearDown(supabase.dispose);
@@ -67,4 +68,17 @@ void main() {
     expect(find.widgetWithText(AppBar, '오답노트'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _TestPkceStorage extends GotrueAsyncStorage {
+  const _TestPkceStorage();
+
+  @override
+  Future<String?> getItem({required String key}) async => null;
+
+  @override
+  Future<void> removeItem({required String key}) async {}
+
+  @override
+  Future<void> setItem({required String key, required String value}) async {}
 }
