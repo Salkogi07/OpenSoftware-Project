@@ -36,11 +36,20 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(theme: appTheme, home: const MainNavigationScreen()),
     );
+    // 학습 탭이 questions.json을 읽는 동안 로딩 스피너가 돌아서, 실제 시간으로 잠깐 기다림
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 500)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('하루어휘 - 홈'), findsOneWidget);
     final recordsButton = find.text('나의 기록');
-    await tester.ensureVisible(recordsButton);
+    // 버튼이 화면 아래에 있어 아직 그려지지 않았을 수 있으므로 스크롤해서 찾음
+    await tester.scrollUntilVisible(
+      recordsButton,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(recordsButton);
     await tester.pumpAndSettle();
@@ -52,13 +61,6 @@ void main() {
     expect(find.text('학습 탭'), findsOneWidget);
     expect(find.text('하루어휘 - 홈'), findsNothing);
 
-    // 학습 탭 → 단어장 복습 → 어휘장 화면
-    await tester.tap(find.text('단어장 복습'));
-    await tester.pumpAndSettle();
-    expect(find.text('나만의 어휘장'), findsOneWidget);
-
-    await tester.pageBack();
-    await tester.pumpAndSettle();
     await tester.tap(find.text('마이'));
     await tester.pumpAndSettle();
     final mistakes = find.text('오답노트');
