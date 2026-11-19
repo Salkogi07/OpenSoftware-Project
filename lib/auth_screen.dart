@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 // 경로가 다를 경우 프로젝트 폴더 구조에 맞게 수정해 주세요.
 
-import 'package:erre_app/main_navigation_screen.dart';
+import 'main_navigation_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
