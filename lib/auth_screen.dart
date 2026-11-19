@@ -1,3 +1,4 @@
+import 'auth_service.dart';
 import 'package:flutter/material.dart';
 // 경로가 다를 경우 프로젝트 폴더 구조에 맞게 수정해 주세요.
 
@@ -12,7 +13,10 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   // true면 로그인 모드, false면 회원가입 모드
-  bool _isLogin = true;
+    bool _isLogin = true;
+
+    bool _isLoading = false;
+    final AuthService _authService = AuthService();
 
   // 비밀번호 숨김/표시 토글
   bool _obscurePassword = true;
@@ -34,16 +38,65 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   // 로그인 / 회원가입 버튼 눌렀을 때 실행되는 함수
-  void _submitForm() {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-    // TODO: 추후 백엔드(Supabase 등) 실제 인증 로직 연동 위치
-    // 현재는 UI 확인을 위해 메인 내비게이션 화면으로 바로 이동합니다.
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const MainNavigationScreen(),
-      ),
-    );
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (_isLogin) {
+        // 로그인
+        await _authService.signIn(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+      } else {
+        // 회원가입
+        await _authService.signUp(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          nickname: _nicknameController.text.trim(),
+        );
+      }
+
+      // 로그인 또는 회원가입 성공 시 메인 화면으로 이동
+      if (!mounted) return;
+
+      if (_isLogin) {
+      // 로그인 성공 시 메인 화면으로 이동
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const MainNavigationScreen(),
+        ),
+      );
+    } else {
+      // 회원가입 성공 시 이메일 인증 안내
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('인증 이메일을 전송했습니다. 이메일 인증 후 로그인해 주세요'),
+        ),
+      );
+
+      setState(() {
+        _isLogin = true;
+      });
+    }
+    } catch (e) {
+      // 오류 처리
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류 발생: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -171,8 +224,17 @@ class _AuthScreenState extends State<AuthScreen> {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: _submitForm,
-                      child: Text(
+                      onPressed: _isLoading ? null : _submitForm,
+                      child: _isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
                         _isLogin ? '로그인' : '회원가입 완료',
                         style: const TextStyle(
                           fontSize: 16,
