@@ -27,5 +27,10 @@ void main() {
 
     expect(find.text('학습 탭'), findsOneWidget);
     expect(find.text('에르 - 홈'), findsNothing);
+
+    // 학습 탭 → 단어장 복습 → 어휘장 화면
+    await tester.tap(find.text('단어장 복습'));
+    await tester.pumpAndSettle();
+    expect(find.text('나만의 어휘장'), findsOneWidget);
   });
 }
