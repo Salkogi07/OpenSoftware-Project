@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-// 단어 데이터 모델
 class VocabItem {
   final String id;
   final String word;
   final String meaning;
   final String example;
+  final String topic;
   int wrongCount;
   bool isStarred;
   bool isReviewed;
@@ -15,6 +15,7 @@ class VocabItem {
     required this.word,
     required this.meaning,
     required this.example,
+    required this.topic,
     this.wrongCount = 1,
     this.isStarred = false,
     this.isReviewed = false,
@@ -29,60 +30,62 @@ class VocabularyScreen extends StatefulWidget {
 }
 
 class _VocabularyScreenState extends State<VocabularyScreen> {
-  // 임시 샘플 데이터 (추후 실제 퀴즈 오답 데이터와 연동)
   final List<VocabItem> _vocabList = [
     VocabItem(
       id: '1',
-      word: 'ubiquitous',
-      meaning: '어디에나 있는, 아주 흔한',
-      example: 'Smartphones have become ubiquitous in modern society.',
+      word: '심심한 사과',
+      meaning: '마음에서 우러나오는 깊은 사과 (지루하다는 뜻이 아님)',
+      example: '이번 일로 불편을 드린 점 심심한 사과의 말씀을 전합니다.',
+      topic: '원래 알던 단어에서 뻗어 나온 말',
       wrongCount: 3,
       isStarred: true,
       isReviewed: false,
     ),
     VocabItem(
       id: '2',
-      word: 'ephemeral',
-      meaning: '단명하는, 덧없는',
-      example: 'Fame in the digital age is often ephemeral.',
+      word: '게슈탈트 붕괴',
+      meaning: '어떤 말이나 글자를 오래 보아 갑자기 낯설고 이상해지는 현상',
+      example: '같은 단어를 계속 적다 보니 게슈탈트 붕괴가 왔다.',
+      topic: '요즘 잘 안 쓰는 말',
       wrongCount: 2,
       isStarred: false,
       isReviewed: false,
     ),
     VocabItem(
       id: '3',
-      word: 'pragmatic',
-      meaning: '실용적인, 현실적인',
-      example: 'We need a pragmatic approach to solve this issue.',
+      word: '양해',
+      meaning: '사정을 헤아려 너그러이 받아들임',
+      example: '일정 변경에 대해 미리 양해를 구했습니다.',
+      topic: '공식적인 자리에서 쓰는 말',
       wrongCount: 1,
       isStarred: false,
       isReviewed: true,
     ),
     VocabItem(
       id: '4',
-      word: 'ambiguous',
-      meaning: '모호한, 여러 가지로 해석될 수 있는',
-      example: 'His reply to my question was somewhat ambiguous.',
+      word: '가심비',
+      meaning: '가격 대비 심리적 만족도를 뜻하는 말',
+      example: '조금 비싸도 기분이 좋아지는 가심비 소비를 했다.',
+      topic: '원래 알던 단어에서 뻗어 나온 말',
       wrongCount: 2,
       isStarred: true,
       isReviewed: false,
     ),
   ];
 
-  // 필터 상태 ('all', 'starred', 'unreviewed')
-  String _selectedFilter = 'all';
+  String _selectedTopic = '전체';
+  bool _onlyStarred = false;
+  bool _onlyUnreviewed = false;
 
-  // 필터링된 목록 반환
   List<VocabItem> get _filteredList {
-    if (_selectedFilter == 'starred') {
-      return _vocabList.where((item) => item.isStarred).toList();
-    } else if (_selectedFilter == 'unreviewed') {
-      return _vocabList.where((item) => !item.isReviewed).toList();
-    }
-    return _vocabList;
+    return _vocabList.where((item) {
+      final matchTopic = _selectedTopic == '전체' || item.topic == _selectedTopic;
+      final matchStar = !_onlyStarred || item.isStarred;
+      final matchUnreviewed = !_onlyUnreviewed || !item.isReviewed;
+      return matchTopic && matchStar && matchUnreviewed;
+    }).toList();
   }
 
-  // 다시 풀기 다이얼로그(간단 퀴즈 팝업)
   void _showRetryDialog(List<VocabItem> targets) {
     if (targets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,21 +108,21 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
                     currentWord.word,
                     style: const TextStyle(
-                      fontSize: 26,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   if (showMeaning) ...[
                     Text(
                       currentWord.meaning,
                       style: const TextStyle(
-                        fontSize: 18,
-                        color: Colors.indigo,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                       textAlign: TextAlign.center,
@@ -177,47 +180,110 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final displayList = _filteredList;
     final reviewedCount = _vocabList.where((e) => e.isReviewed).length;
+    final topics = [
+      '전체',
+      '공식적인 자리에서 쓰는 말',
+      '원래 알던 단어에서 뻗어 나온 말',
+      '요즘 잘 안 쓰는 말',
+    ];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('나만의 어휘장'),
+        title: const Text('어휘장'),
         centerTitle: true,
         actions: [
           TextButton.icon(
             onPressed: () => _showRetryDialog(displayList),
             icon: const Icon(Icons.refresh),
-            label: const Text('전체 다시 풀기'),
+            label: const Text('다시 풀기'),
           ),
         ],
       ),
       body: Column(
         children: [
-          // 상단 요약 및 필터 영역
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            color: Colors.grey[100],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            width: double.infinity,
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '총 ${_vocabList.length}개 중 $reviewedCount개 복습 완료',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[700],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildFilterChip('전체', 'all'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('⭐ 헷갈리는 단어', 'starred'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('미복습', 'unreviewed'),
+                    const Text(
+                      '틀린 단어 복습 현황',
+                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '총 ${_vocabList.length}개 중 $reviewedCount개 복습 완료',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
                   ],
+                ),
+                const Icon(Icons.menu_book_rounded, size: 32),
+              ],
+            ),
+          ),
+
+          // 주제 필터
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: topics.map((topic) {
+                final selected = _selectedTopic == topic;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(topic),
+                    selected: selected,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedTopic = topic;
+                      });
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          // 상태 필터(별표 / 미복습)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+            child: Row(
+              children: [
+                FilterChip(
+                  label: const Text('⭐ 헷갈리는 단어'),
+                  selected: _onlyStarred,
+                  onSelected: (val) {
+                    setState(() {
+                      _onlyStarred = val;
+                    });
+                  },
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: const Text('미복습만'),
+                  selected: _onlyUnreviewed,
+                  onSelected: (val) {
+                    setState(() {
+                      _onlyUnreviewed = val;
+                    });
+                  },
                 ),
               ],
             ),
@@ -226,21 +292,18 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
           // 단어 목록
           Expanded(
             child: displayList.isEmpty
-                ? const Center(child: Text('해당 조건의 단어가 없습니다.'))
+                ? const Center(child: Text('조건에 맞는 단어가 없습니다.'))
                 : ListView.builder(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: displayList.length,
                     itemBuilder: (context, index) {
                       final item = displayList[index];
                       return Card(
                         margin: const EdgeInsets.only(bottom: 10),
-                        elevation: 1.5,
-                        color: item.isReviewed ? Colors.grey[50] : Colors.white,
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Row(
                             children: [
-                              // 1. 복습 여부 체크박스
                               Checkbox(
                                 value: item.isReviewed,
                                 onChanged: (val) {
@@ -249,13 +312,10 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                   });
                                 },
                               ),
-
-                              // 2. 단어 및 뜻 정보
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // 공간이 모자라면 오답 배지가 다음 줄로 내려감 (Row면 화면 밖으로 넘침)
                                     Wrap(
                                       spacing: 8,
                                       runSpacing: 4,
@@ -264,14 +324,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                         Text(
                                           item.word,
                                           style: TextStyle(
-                                            fontSize: 18,
+                                            fontSize: 17,
                                             fontWeight: FontWeight.bold,
                                             decoration: item.isReviewed
                                                 ? TextDecoration.lineThrough
                                                 : null,
-                                            color: item.isReviewed
-                                                ? Colors.grey
-                                                : Colors.black87,
                                           ),
                                         ),
                                         Container(
@@ -281,8 +338,7 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: Colors.red[50],
-                                            borderRadius:
-                                                BorderRadius.circular(4),
+                                            borderRadius: BorderRadius.circular(4),
                                           ),
                                           child: Text(
                                             '${item.wrongCount}회 오답',
@@ -297,28 +353,24 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      item.meaning,
+                                      item.topic,
                                       style: TextStyle(
-                                        fontSize: 14,
-                                        color: item.isReviewed
-                                            ? Colors.grey
-                                            : Colors.black54,
+                                        fontSize: 11,
+                                        color: Colors.grey[600],
                                       ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      item.meaning,
+                                      style: const TextStyle(fontSize: 14),
                                     ),
                                   ],
                                 ),
                               ),
-
-                              // 3. 헷갈리는 단어 별표 버튼
                               IconButton(
-                                tooltip: '헷갈리는 단어 표시',
                                 icon: Icon(
-                                  item.isStarred
-                                      ? Icons.star
-                                      : Icons.star_border,
-                                  color: item.isStarred
-                                      ? Colors.amber
-                                      : Colors.grey,
+                                  item.isStarred ? Icons.star : Icons.star_border,
+                                  color: item.isStarred ? Colors.amber : Colors.grey,
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -326,16 +378,8 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                                   });
                                 },
                               ),
-
-                              // 4. 개별 다시 풀기 버튼
                               OutlinedButton(
                                 onPressed: () => _showRetryDialog([item]),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
-                                  minimumSize: const Size(0, 34),
-                                ),
                                 child: const Text(
                                   '다시 풀기',
                                   style: TextStyle(fontSize: 12),
@@ -350,19 +394,6 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, String value) {
-    final isSelected = _selectedFilter == value;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) {
-        setState(() {
-          _selectedFilter = value;
-        });
-      },
     );
   }
 }
