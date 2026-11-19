@@ -11,6 +11,64 @@ class _StudyLibrary extends ChangeNotifier {
   final mistakes = <(String, String), Word>{};
   String nickname = '어휘새싹';
 
+  // 수파베이스에서 불러온 학습 기록 (로그인했을 때만 채워짐)
+  int streak = 0;
+  LearningSummary summary = LearningSummary.empty;
+  WeeklyStats weekly = weeklyStats(const [], DateTime.now());
+  List<Word> topWrongWords = const [];
+  bool loading = false;
+  String? loadError;
+  bool _disposed = false;
+
+  /// DB에서 연속 출석·요약·어휘장·주간 통계를 다시 불러옴. 탭을 옮기거나 홈으로 돌아올 때 부름
+  Future<void> refresh() async {
+    if (!learningRepository.isLoggedIn || _disposed) return;
+    loading = true;
+    loadError = null;
+    notifyListeners();
+    try {
+      await learningRepository.flush(); // 방금 푼 결과 저장이 끝난 뒤에 불러옴
+      final (name, newStreak, newSummary, wrongRows, attempts) = await (
+        learningRepository.fetchNickname(),
+        learningRepository.fetchStreak(),
+        learningRepository.fetchSummary(),
+        learningRepository.fetchWrongQuestionRows(),
+        learningRepository.fetchRecentAttempts(),
+      ).wait;
+      final newWeekly = weeklyStats(attempts, DateTime.now());
+      final topRows = await learningRepository.fetchQuestionRows(
+        newWeekly.topWrongQuestionIds,
+      );
+      final byId = {for (final row in topRows) row['id'] as String: row};
+      if (_disposed) return;
+      if (name != null && name.isNotEmpty) nickname = name;
+      streak = newStreak;
+      summary = newSummary;
+      weekly = newWeekly;
+      topWrongWords = [
+        for (final id in newWeekly.topWrongQuestionIds)
+          if (byId[id] case final row?) Word.fromJson(row),
+      ];
+      mistakes
+        ..clear()
+        ..addEntries(
+          wrongRows.map(Word.fromJson).map((word) => MapEntry(key(word), word)),
+        );
+    } catch (e) {
+      debugPrint('학습 기록 불러오기 실패: $e');
+      loadError = '기록을 불러오지 못했어요.';
+    } finally {
+      loading = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   (String, String) key(Word word) => (word.name, word.meaning);
 
   void recordMistake(Word word) {
@@ -109,27 +167,27 @@ class _MyPage extends StatelessWidget {
       body: ScreenBody(
         contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
-          _LevelCard(nickname: library.nickname),
+          _LevelCard(nickname: library.nickname, xp: library.summary.xp),
           const SizedBox(height: 22),
-          const _MyHeading('나의 학습 현황', trailing: '예시 기록'),
-          const _TileRow(
+          _MyHeading('나의 학습 현황', trailing: _loadStatus(library)),
+          _TileRow(
             tiles: [
               _MyTile(
                 icon: Icons.local_fire_department_rounded,
                 label: '연속 학습',
-                value: '7일',
+                value: '${library.streak}일',
                 background: _warm,
                 ink: _rust,
               ),
               _MyTile(
                 icon: Icons.track_changes_rounded,
                 label: '전체 정답률',
-                value: '82%',
+                value: _percent(library.summary.accuracy),
               ),
               _MyTile(
                 icon: Icons.auto_stories_rounded,
                 label: '총 학습 단어',
-                value: '120개',
+                value: '${library.summary.learnedWords}개',
               ),
             ],
           ),
@@ -218,6 +276,17 @@ class _MyPage extends StatelessWidget {
       );
 }
 
+/// 정답률 표시: 푼 문제가 없으면 '-'
+String _percent(double? accuracy) =>
+    accuracy == null ? '-' : '${(accuracy * 100).round()}%';
+
+/// 불러오는 중·실패·로그인 안 함 상태 안내 (제목 오른쪽 작은 글씨)
+String? _loadStatus(_StudyLibrary library) {
+  if (!learningRepository.isLoggedIn) return '로그인하면 기록이 저장돼요';
+  if (library.loading) return '불러오는 중';
+  return library.loadError;
+}
+
 void _review(BuildContext context, Iterable<Word> words) {
   final batch = words.toList(growable: false);
   Navigator.of(context).push(
@@ -267,9 +336,10 @@ class _MyPanel extends StatelessWidget {
 }
 
 class _LevelCard extends StatelessWidget {
-  const _LevelCard({required this.nickname});
+  const _LevelCard({required this.nickname, required this.xp});
 
   final String nickname;
+  final int xp;
 
   @override
   Widget build(BuildContext context) => _MyPanel(
@@ -309,24 +379,24 @@ class _LevelCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(nickname, style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 8),
-                const Wrap(
+                Wrap(
                   spacing: 10,
                   runSpacing: 3,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     DecoratedBox(
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: Color(0xffffe3ba),
                         borderRadius: BorderRadius.all(Radius.circular(8)),
                       ),
                       child: Padding(
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 2,
                         ),
                         child: Text(
-                          'Lv.4',
-                          style: TextStyle(
+                          'Lv.${levelFor(xp).level}',
+                          style: const TextStyle(
                             color: _rust,
                             fontWeight: FontWeight.w800,
                           ),
@@ -334,8 +404,8 @@ class _LevelCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '320 / 400 XP',
-                      style: TextStyle(
+                      '$xp / ${levelFor(xp).xpForNext} XP',
+                      style: const TextStyle(
                         color: green,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -344,13 +414,13 @@ class _LevelCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                const LinearProgressIndicator(
-                  value: .8,
+                LinearProgressIndicator(
+                  value: levelFor(xp).xpInLevel / xpPerLevel,
                   minHeight: 8,
                   borderRadius: BorderRadius.all(Radius.circular(8)),
                   color: green,
                   backgroundColor: Color(0xffbce6d6),
-                  semanticsLabel: '경험치, 400 중 320',
+                  semanticsLabel: '경험치, ${levelFor(xp).xpForNext} 중 $xp',
                 ),
               ],
             ),

@@ -6,7 +6,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'learning_stats.dart';
 
 class LearningRepository {
-  const LearningRepository();
+  // 저장 요청을 순서대로 처리. 화면을 새로 그리기 전에 flush()로 밀린 저장을 기다림
+  Future<void> _pendingWrites = Future.value();
+
+  void _enqueue(Future<void> Function() write) {
+    _pendingWrites = _pendingWrites.then((_) => write());
+  }
+
+  /// 아직 끝나지 않은 저장 요청을 모두 기다림
+  Future<void> flush() => _pendingWrites;
+
+  /// 로그인해서 수파베이스에 저장·불러오기가 가능한지
+  bool get isLoggedIn => _client != null;
 
   /// 로그인한 사용자의 클라이언트. 키가 없어 수파베이스를 안 켰거나(화면 작업·테스트) 로그아웃 상태면 null
   SupabaseClient? get _client {
@@ -21,36 +32,40 @@ class LearningRepository {
   /// 답 하나 저장: 기록을 남기고, 틀리면 어휘장에 넣고 맞히면 뺌 (DB 함수 record_answer)
   /// 퀴즈 진행을 막지 않도록 실패해도 오류를 던지지 않고 로그만 남김
   // ponytail: 인터넷이 끊기면 그 답은 저장되지 않음. 필요하면 나중에 다시 보내는 대기열 추가
-  Future<void> recordAnswer({
+  void recordAnswer({
     required String questionId,
     required bool isCorrect,
     required int timeSpentMs,
-  }) async {
+  }) {
     final client = _client;
     if (client == null) return;
-    try {
-      await client.rpc(
-        'record_answer',
-        params: {
-          'p_question_id': questionId,
-          'p_is_correct': isCorrect,
-          'p_time_spent_ms': timeSpentMs,
-        },
-      );
-    } catch (e) {
-      debugPrint('푼 결과 저장 실패: $e');
-    }
+    _enqueue(() async {
+      try {
+        await client.rpc(
+          'record_answer',
+          params: {
+            'p_question_id': questionId,
+            'p_is_correct': isCorrect,
+            'p_time_spent_ms': timeSpentMs,
+          },
+        );
+      } catch (e) {
+        debugPrint('푼 결과 저장 실패: $e');
+      }
+    });
   }
 
   /// 오늘 출석 남기기 (학습을 한 번 끝냈을 때). 같은 날 여러 번 불러도 1번만 저장됨
-  Future<void> markAttendance() async {
+  void markAttendance() {
     final client = _client;
     if (client == null) return;
-    try {
-      await client.rpc('mark_attendance');
-    } catch (e) {
-      debugPrint('출석 저장 실패: $e');
-    }
+    _enqueue(() async {
+      try {
+        await client.rpc('mark_attendance');
+      } catch (e) {
+        debugPrint('출석 저장 실패: $e');
+      }
+    });
   }
 
   /// 최근 [days]일 동안 푼 기록. 불러오기 실패는 화면에서 오류 상태로 보여 주도록 그대로 던짐
@@ -95,6 +110,44 @@ class LearningRepository {
   /// 기록 탭 주간 통계
   Future<WeeklyStats> fetchWeeklyStats() async =>
       weeklyStats(await fetchRecentAttempts(), DateTime.now());
+
+  /// 홈·마이페이지 요약 숫자 (DB 함수 my_learning_summary)
+  Future<LearningSummary> fetchSummary() async {
+    final client = _client;
+    if (client == null) return LearningSummary.empty;
+    final rows = await client.rpc('my_learning_summary') as List<dynamic>;
+    return LearningSummary.fromRow(rows.first as Map<String, dynamic>);
+  }
+
+  /// 가입할 때 정한 닉네임 (profiles 표)
+  Future<String?> fetchNickname() async {
+    final client = _client;
+    if (client == null) return null;
+    final row = await client
+        .from('profiles')
+        .select('nickname')
+        .eq('id', client.auth.currentUser!.id)
+        .maybeSingle();
+    return row?['nickname'] as String?;
+  }
+
+  /// 어휘장(틀린 문제) 문제 내용. 최근에 틀린 순. questions.json과 같은 칸으로 돌려줌
+  Future<List<Map<String, dynamic>>> fetchWrongQuestionRows() async {
+    final client = _client;
+    if (client == null) return const [];
+    final rows = await client
+        .from('wrong_answers')
+        .select('questions(*)')
+        .order('last_wrong_at', ascending: false);
+    return [for (final row in rows) row['questions'] as Map<String, dynamic>];
+  }
+
+  /// 문제 번호들로 문제 내용 가져오기 (기록 탭 TOP 3 단어 이름 표시용)
+  Future<List<Map<String, dynamic>>> fetchQuestionRows(List<String> ids) async {
+    final client = _client;
+    if (client == null || ids.isEmpty) return const [];
+    return client.from('questions').select().inFilter('id', ids);
+  }
 }
 
-const learningRepository = LearningRepository();
+final learningRepository = LearningRepository();

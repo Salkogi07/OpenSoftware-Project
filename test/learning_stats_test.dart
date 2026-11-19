@@ -100,4 +100,27 @@ void main() {
       expect(stats.topWrongQuestionIds, isEmpty);
     });
   });
+
+  group('요약 숫자와 레벨', () {
+    test('정답률과 경험치', () {
+      const summary = LearningSummary(
+        totalAnswers: 10,
+        correctAnswers: 7,
+        learnedWords: 8,
+        todayAnswers: 5,
+      );
+      expect(summary.accuracy, closeTo(0.7, 1e-9));
+      expect(summary.xp, 21);
+    });
+    test('푼 문제가 없으면 정답률 null, 경험치 0', () {
+      expect(LearningSummary.empty.accuracy, isNull);
+      expect(LearningSummary.empty.xp, 0);
+    });
+    test('100 XP마다 1레벨 (디자인 예시: 320 XP = Lv.4, 다음 400)', () {
+      expect(levelFor(0), (level: 1, xpInLevel: 0, xpForNext: 100));
+      expect(levelFor(99), (level: 1, xpInLevel: 99, xpForNext: 100));
+      expect(levelFor(100), (level: 2, xpInLevel: 0, xpForNext: 200));
+      expect(levelFor(320), (level: 4, xpInLevel: 20, xpForNext: 400));
+    });
+  });
 }

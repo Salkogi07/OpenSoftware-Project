@@ -135,3 +135,53 @@ WeeklyStats weeklyStats(List<AttemptRecord> attempts, DateTime now) {
     topWrongQuestionIds: top.take(3).toList(),
   );
 }
+
+/// 홈·마이페이지 요약 숫자 (DB 함수 my_learning_summary 결과)
+class LearningSummary {
+  const LearningSummary({
+    required this.totalAnswers,
+    required this.correctAnswers,
+    required this.learnedWords,
+    required this.todayAnswers,
+  });
+
+  factory LearningSummary.fromRow(Map<String, dynamic> row) => LearningSummary(
+    totalAnswers: row['total_answers'] as int,
+    correctAnswers: row['correct_answers'] as int,
+    learnedWords: row['learned_words'] as int,
+    todayAnswers: row['today_answers'] as int,
+  );
+
+  static const empty = LearningSummary(
+    totalAnswers: 0,
+    correctAnswers: 0,
+    learnedWords: 0,
+    todayAnswers: 0,
+  );
+
+  final int totalAnswers;
+  final int correctAnswers;
+
+  /// 한 번이라도 푼 단어 수 (중복 제외)
+  final int learnedWords;
+
+  /// 오늘(한국 날짜) 푼 문제 수
+  final int todayAnswers;
+
+  /// 전체 정답률(0~1). 푼 문제가 없으면 null
+  double? get accuracy =>
+      totalAnswers == 0 ? null : correctAnswers / totalAnswers;
+
+  /// 경험치: 맞힌 문제당 3 XP (학습 완료 화면의 보상 기준과 같음)
+  int get xp => correctAnswers * xpPerCorrect;
+}
+
+const xpPerCorrect = 3;
+const xpPerLevel = 100;
+
+/// 경험치로 레벨 계산: 100 XP마다 1레벨 (0 XP = Lv.1)
+({int level, int xpInLevel, int xpForNext}) levelFor(int xp) => (
+  level: xp ~/ xpPerLevel + 1,
+  xpInLevel: xp % xpPerLevel,
+  xpForNext: (xp ~/ xpPerLevel + 1) * xpPerLevel,
+);

@@ -1,10 +1,11 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'learning/learning_repository.dart';
+import 'learning/learning_stats.dart';
 
 part 'home_page.dart';
 part 'my_page.dart';
@@ -218,6 +219,12 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    library.refresh(); // 로그인한 사용자의 학습 기록을 DB에서 불러옴
+  }
+
+  @override
   void dispose() {
     library.dispose();
     super.dispose();
@@ -228,6 +235,7 @@ class _MainScreenState extends State<MainScreen> {
       key.currentState?.popUntil((route) => route.isFirst);
     }
     setState(() => selectedTab = 0);
+    library.refresh(); // 퀴즈를 마치고 돌아오면 방금 푼 결과를 반영
   }
 
   @override
@@ -240,12 +248,7 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             for (var tabIndex = 0; tabIndex < 4; tabIndex++)
               if (tabIndex == 2)
-                const SummaryScreen(
-                  title: '기록 탭',
-                  icon: Icons.bar_chart_rounded,
-                  heading: '오늘의 학습 진행도',
-                  detail: '예시 기록 · 오늘의 목표 10개 중 7개를 학습했어요.',
-                )
+                const RecordScreen()
               else
                 _tabNavigator(
                   tabIndex,
@@ -262,8 +265,10 @@ class _MainScreenState extends State<MainScreen> {
             height: 64,
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             selectedIndex: selectedTab,
-            onDestinationSelected: (index) =>
-                setState(() => selectedTab = index),
+            onDestinationSelected: (index) {
+              setState(() => selectedTab = index);
+              library.refresh(); // 탭을 옮길 때마다 최신 기록으로
+            },
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),
@@ -312,45 +317,134 @@ class _MainScreenState extends State<MainScreen> {
       );
 }
 
-class SummaryScreen extends StatelessWidget {
-  const SummaryScreen({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.heading,
-    required this.detail,
-  });
+// 기록 탭: 최근 7일 학습량·정답률·자주 틀린 단어 TOP 3 (learning_stats.dart의 weeklyStats)
+class RecordScreen extends StatelessWidget {
+  const RecordScreen({super.key});
 
-  final String title;
-  final IconData icon;
-  final String heading;
-  final String detail;
+  static const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
   @override
   Widget build(BuildContext context) {
+    final library = _LibraryScope.watch(context);
+    final weekly = library?.weekly ?? weeklyStats(const [], DateTime.now());
+    final total = weekly.dailyCounts.fold<int>(0, (sum, n) => sum + n);
+    final maxCount = weekly.dailyCounts.fold<int>(1, math.max);
+    final today = koreanDate(DateTime.now());
+    final text = Theme.of(context).textTheme;
+    final status = library == null ? null : _loadStatus(library);
+
     return Scaffold(
-      appBar: _tabAppBar(title),
+      appBar: _tabAppBar('기록 탭'),
       body: ScreenBody(
         children: [
-          DecoratedBox(
-            decoration: const BoxDecoration(
-              color: mint,
-              borderRadius: cardRadius,
-            ),
-            child: ListTile(
-              contentPadding: cardPadding,
-              leading: Icon(icon, color: green),
-              title: Text(
-                heading,
-                style: Theme.of(context).textTheme.titleMedium,
+          if (status != null) ...[
+            Text(status, style: const TextStyle(color: _muted)),
+            const SizedBox(height: 12),
+          ],
+          _RecordCard(
+            icon: Icons.bar_chart_rounded,
+            title: '이번 주 학습량',
+            detail: total == 0
+                ? '최근 7일 동안 푼 문제가 없어요. 학습 탭에서 시작해 보세요.'
+                : '최근 7일 동안 $total문제를 풀었어요.',
+            child: SizedBox(
+              height: 110,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (var i = 0; i < 7; i++)
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${weekly.dailyCounts[i]}',
+                            style: text.labelLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            height: 60 * weekly.dailyCounts[i] / maxCount + 2,
+                            margin: const EdgeInsets.symmetric(horizontal: 6),
+                            decoration: BoxDecoration(
+                              color: i == 6 ? green : const Color(0xffbce6d6),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _weekdays[today
+                                    .subtract(Duration(days: 6 - i))
+                                    .weekday -
+                                1],
+                            style: const TextStyle(color: _muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-              subtitle: Text(detail),
             ),
+          ),
+          const SizedBox(height: 12),
+          _RecordCard(
+            icon: Icons.track_changes_rounded,
+            title: '이번 주 정답률',
+            detail: weekly.accuracy == null
+                ? '아직 기록이 없어요.'
+                : '${_percent(weekly.accuracy)} · 정답 1문제당 3 XP',
+          ),
+          const SizedBox(height: 12),
+          _RecordCard(
+            icon: Icons.error_outline_rounded,
+            title: '자주 틀리는 단어 TOP 3',
+            detail: library == null || library.topWrongWords.isEmpty
+                ? '이번 주에 틀린 단어가 없어요.'
+                : [
+                    for (final (i, word) in library.topWrongWords.indexed)
+                      '${i + 1}. ${word.name} · ${word.meaning}',
+                  ].join('\n'),
           ),
         ],
       ),
     );
   }
+}
+
+class _RecordCard extends StatelessWidget {
+  const _RecordCard({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    this.child,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(color: mint, borderRadius: cardRadius),
+    child: Padding(
+      padding: cardPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: green),
+              const SizedBox(width: 10),
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(detail),
+          if (child case final child?) ...[const SizedBox(height: 16), child],
+        ],
+      ),
+    ),
+  );
 }
 
 class StudyScreen extends StatelessWidget {
