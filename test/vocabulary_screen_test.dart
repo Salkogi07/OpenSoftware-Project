@@ -15,6 +15,6 @@ void main() {
 
     // 화면이 넘치면 Flutter가 오류를 던져 이 테스트가 실패함
     expect(tester.takeException(), isNull);
-    expect(find.text('ubiquitous'), findsOneWidget);
+    expect(find.text('심심한 사과'), findsOneWidget);
   });
 }
