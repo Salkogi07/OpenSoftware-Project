@@ -26,10 +26,15 @@ class HomeScreen extends StatelessWidget {
   final VoidCallback onContinue;
   final VoidCallback? onRecords;
 
+  /// 하루 목표 문제 수
+  static const goal = 10;
+
   @override
   Widget build(BuildContext context) {
-    const completed = 7;
-    const goal = 10;
+    final library = _LibraryScope.watch(context);
+    final completed = library?.summary.todayAnswers ?? 0;
+    final streak = library?.streak ?? 0;
+    final level = levelFor(library?.summary.xp ?? 0).level;
 
     return Scaffold(
       backgroundColor: _homeBackground,
@@ -68,31 +73,34 @@ class HomeScreen extends StatelessWidget {
             child: _HomeGreeting(),
           ),
           const SizedBox(height: 19),
-          const Wrap(
+          Wrap(
             spacing: 14,
             runSpacing: 8,
             children: [
               _HomeBadge(
-                icon: Text('🔥', style: TextStyle(fontSize: 19, height: 1)),
-                label: '7일 연속',
+                icon: const Text(
+                  '🔥',
+                  style: TextStyle(fontSize: 19, height: 1),
+                ),
+                label: '$streak일 연속',
                 background: Color(0xfffae6c8),
                 foreground: Color(0xff514b3f),
               ),
               _HomeBadge(
-                icon: _StudyBars(
+                icon: const _StudyBars(
                   color: Color(0xff365e70),
                   lastColor: Color(0xff76a99a),
                 ),
-                label: 'Lv.4',
+                label: 'Lv.$level',
                 background: _homeMint,
                 foreground: _homeGreen,
               ),
             ],
           ),
           const SizedBox(height: 24),
-          const _DailyProgress(completed: completed, goal: goal),
+          _DailyProgress(completed: completed, goal: goal),
           const SizedBox(height: 20),
-          const _HomeMascotCard(remaining: goal - completed),
+          _HomeMascotCard(remaining: math.max(0, goal - completed)),
           const SizedBox(height: 24),
           FilledButton.icon(
             style: FilledButton.styleFrom(
@@ -118,7 +126,9 @@ class HomeScreen extends StatelessWidget {
             ),
             icon: const _StudyBars(color: _homeInk),
             label: const Text('나의 기록'),
-            onPressed: onRecords ?? () => _showRecords(context),
+            onPressed:
+                onRecords ??
+                () => _showRecords(context, streak, level, completed),
           ),
         ],
       ),
@@ -140,12 +150,19 @@ class HomeScreen extends StatelessWidget {
     ),
   );
 
-  void _showRecords(BuildContext context) => showDialog<void>(
+  void _showRecords(
+    BuildContext context,
+    int streak,
+    int level,
+    int completed,
+  ) => showDialog<void>(
     context: context,
     useRootNavigator: false,
     builder: (context) => AlertDialog(
       title: const Text('나의 기록'),
-      content: const Text('연속 학습 7일 · Lv.4\n오늘은 10개 중 7개를 공부했어요.\n\n예시 기록입니다.'),
+      content: Text(
+        '연속 학습 $streak일 · Lv.$level\n오늘은 $goal개 중 $completed개를 공부했어요.',
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
@@ -341,7 +358,7 @@ class _DailyProgress extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         LinearProgressIndicator(
-          value: completed / goal,
+          value: math.min(1, completed / goal),
           minHeight: 12,
           stopIndicatorRadius: 0,
           trackGap: 0,

@@ -333,13 +333,21 @@ flutter run -d <기기ID> --dart-define-from-file=env.json
 | 표 | 내용 | 접근 권한 |
 |---|---|---|
 | `profiles` | 사용자 정보 (로그인 계정 1개당 1줄) | 본인 것만 보기·만들기·고치기 |
-| `topics` | 주제 3가지 | 누구나 보기만 |
-| `questions` | 문제 (엑셀 칸과 같음: 번호, 주제, 난이도, 문제, 보기 1~4, 정답, 해설, 예문) | 누구나 보기만 |
+| `questions` | 문제 900개 (`assets/questions.json`과 같음: 번호 `ER-001`, 주제, 난이도 하/중/상, 문제, 보기 4개, 정답 번호, 단어, 뜻, 해설) | 누구나 보기만 |
 | `attempts` | 문제 푼 기록 (맞았는지, 걸린 시간) | 본인 것만 |
-| `wrong_answers` | 틀린 문제 (어휘장: 틀린 횟수, 별표, 복습 체크) | 본인 것만 |
-| `attendance` | 출석 날짜 (한국 날짜 기준) | 본인 것만 |
+| `wrong_answers` | 틀린 문제 (어휘장: 틀린 횟수, 별표, 복습 체크). 틀리면 들어오고 다시 맞히면 빠짐 | 본인 것만 |
+| `attendance` | 출석 날짜 (한국 날짜 기준, 하루 1번) | 본인 것만 |
 
-> 📌 문제를 넣거나 고치는 것은 앱에서 할 수 없습니다. 대시보드의 `Table Editor`(CSV 가져오기)나 `SQL Editor`를 사용합니다.
+**DB 함수** (앱에서 `lib/learning/learning_repository.dart`로 부름)
+
+| 함수 | 하는 일 |
+|---|---|
+| `record_answer(문제번호, 맞음여부, 걸린시간ms)` | 푼 기록을 남기고, 틀리면 어휘장에 넣고(횟수 +1), 맞히면 어휘장에서 뺌 |
+| `mark_attendance()` | 오늘 출석을 남김 (퀴즈를 끝까지 풀면 자동으로 부름) |
+
+복습 문제 뽑기, 연속 출석일, 기록 탭 통계는 `lib/learning/learning_stats.dart`에서 계산합니다. 화면에서는 `learningRepository.fetchReviewQuestionIds()`, `fetchStreak()`, `fetchWeeklyStats()`를 부르면 됩니다.
+
+> 📌 문제를 고치려면 `assets/questions.json`을 고친 뒤 `python supabase/generate_question_seed.py supabase/migrations/<날짜시간>_seed_questions.sql`로 SQL을 새로 만들어 적용합니다. 앱에서는 문제를 바꿀 수 없습니다.
 
 ---
 
