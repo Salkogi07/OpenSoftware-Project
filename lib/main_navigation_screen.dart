@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'theme.dart';
 import 'vocabulary_screen.dart';
 import 'frontend_screens.dart' as frontend;
@@ -80,16 +79,13 @@ class HomeScreen extends StatelessWidget {
                 color: AppColors.accentOrange,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
-                '3일 연속 학습 중!',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: const Text('3일 연속 학습 중!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: () {}, child: const Text('오늘의 퀴즈 풀기')),
+            ElevatedButton(
+              onPressed: () {},
+              child: const Text('오늘의 퀴즈 풀기'),
+            ),
           ],
         ),
       ),
@@ -101,40 +97,34 @@ class StudyScreen extends StatelessWidget {
   const StudyScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('학습 탭')),
-    body: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('학습 화면 내용이 들어갈 자리입니다'),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const VocabularyScreen()),
-            ),
-            icon: const Icon(Icons.bookmark_outline),
-            label: const Text('단어장 복습'),
+        appBar: AppBar(title: const Text('학습 탭')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('학습 화면 내용이 들어갈 자리입니다'),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const VocabularyScreen()),
+                ),
+                icon: const Icon(Icons.bookmark_outline),
+                label: const Text('단어장 복습'),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 }
 
 class RecordScreen extends StatelessWidget {
   const RecordScreen({super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('기록 탭')),
-    body: const Center(child: Text('기록 화면 내용이 들어갈 자리입니다')),
-  );
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('기록 탭')), body: const Center(child: Text('기록 화면 내용이 들어갈 자리입니다')));
 }
 
 class MyPageScreen extends StatelessWidget {
   const MyPageScreen({super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('마이페이지 탭')),
-    body: const Center(child: Text('마이페이지 화면 내용이 들어갈 자리입니다')),
-  );
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('마이페이지 탭')), body: const Center(child: Text('마이페이지 화면 내용이 들어갈 자리입니다')));
 }
