@@ -44,6 +44,93 @@ const buttonShape = RoundedRectangleBorder(
 );
 const feedbackDuration = Duration(milliseconds: 250);
 
+// 디자인 화면 공통 테마 (로그인 뒤 하단 탭 화면에도 사용)
+final frontendTheme = ThemeData(
+  fontFamily: 'Pretendard',
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: green,
+    primary: navy,
+    primaryContainer: mint,
+    onPrimaryContainer: green,
+    tertiary: navy,
+    tertiaryContainer: orange,
+    onTertiaryContainer: navy,
+    surface: Colors.white,
+  ),
+  scaffoldBackgroundColor: Colors.white,
+  navigationBarTheme: NavigationBarThemeData(
+    backgroundColor: Colors.white,
+    surfaceTintColor: Colors.transparent,
+    indicatorColor: Colors.transparent,
+    elevation: 0,
+    iconTheme: WidgetStateProperty.resolveWith(
+      (states) => IconThemeData(
+        color: states.contains(WidgetState.selected)
+            ? _tabSelectedColor
+            : _tabUnselectedColor,
+        size: 24,
+      ),
+    ),
+    labelTextStyle: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected)
+          ? _pretendardText(13, weight: 700, color: _tabSelectedColor)
+          : _pretendardText(13, weight: 500, color: _tabUnselectedColor),
+    ),
+  ),
+  textTheme: const TextTheme(
+    headlineMedium: TextStyle(
+      fontSize: 24,
+      fontWeight: FontWeight.w800,
+      height: 1.35,
+    ),
+    titleLarge: TextStyle(
+      fontSize: 20,
+      fontWeight: FontWeight.w700,
+      height: 1.4,
+    ),
+    titleMedium: TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.w600,
+      height: 1.4,
+    ),
+    bodyLarge: TextStyle(fontSize: 16, height: 1.5),
+    bodyMedium: TextStyle(fontSize: 15, height: 1.5),
+    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+  ).apply(bodyColor: navy, displayColor: navy),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Colors.white,
+    foregroundColor: navy,
+    surfaceTintColor: Colors.transparent,
+    titleTextStyle: TextStyle(
+      color: navy,
+      fontFamily: 'Pretendard',
+      fontSize: 24,
+      fontWeight: FontWeight.bold,
+    ),
+  ),
+  filledButtonTheme: FilledButtonThemeData(
+    style: FilledButton.styleFrom(
+      minimumSize: const Size.fromHeight(56),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      backgroundColor: navy,
+      foregroundColor: Colors.white,
+      shape: buttonShape,
+      animationDuration: feedbackDuration,
+      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+    ),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(
+      minimumSize: const Size.fromHeight(56),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      foregroundColor: navy,
+      shape: buttonShape,
+      animationDuration: feedbackDuration,
+      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    ),
+  ),
+);
+
 class VocabularyApp extends StatelessWidget {
   const VocabularyApp({super.key});
 
@@ -52,94 +139,7 @@ class VocabularyApp extends StatelessWidget {
     return MaterialApp(
       title: '하루어휘',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Pretendard',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: green,
-          primary: navy,
-          primaryContainer: mint,
-          onPrimaryContainer: green,
-          tertiary: navy,
-          tertiaryContainer: orange,
-          onTertiaryContainer: navy,
-          surface: Colors.white,
-        ),
-        scaffoldBackgroundColor: Colors.white,
-        navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          indicatorColor: Colors.transparent,
-          elevation: 0,
-          iconTheme: WidgetStateProperty.resolveWith(
-            (states) => IconThemeData(
-              color: states.contains(WidgetState.selected)
-                  ? _tabSelectedColor
-                  : _tabUnselectedColor,
-              size: 24,
-            ),
-          ),
-          labelTextStyle: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected)
-                ? _pretendardText(13, weight: 700, color: _tabSelectedColor)
-                : _pretendardText(13, weight: 500, color: _tabUnselectedColor),
-          ),
-        ),
-        textTheme: const TextTheme(
-          headlineMedium: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            height: 1.35,
-          ),
-          titleLarge: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            height: 1.4,
-          ),
-          titleMedium: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            height: 1.4,
-          ),
-          bodyLarge: TextStyle(fontSize: 16, height: 1.5),
-          bodyMedium: TextStyle(fontSize: 15, height: 1.5),
-          labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ).apply(bodyColor: navy, displayColor: navy),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: navy,
-          surfaceTintColor: Colors.transparent,
-          titleTextStyle: TextStyle(
-            color: navy,
-            fontFamily: 'Pretendard',
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(56),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            backgroundColor: navy,
-            foregroundColor: Colors.white,
-            shape: buttonShape,
-            animationDuration: feedbackDuration,
-            textStyle: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(56),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            foregroundColor: navy,
-            shape: buttonShape,
-            animationDuration: feedbackDuration,
-            textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
+      theme: frontendTheme,
       home: const MainScreen(),
     );
   }
@@ -1262,43 +1262,5 @@ class _MascotReactionState extends State<MascotReaction>
         },
       ),
     );
-  }
-}
-
-class FrontendHomeScreen extends StatelessWidget {
-  const FrontendHomeScreen({
-    super.key,
-    required this.onContinue,
-    required this.onRecords,
-  });
-
-  final VoidCallback onContinue;
-  final VoidCallback onRecords;
-
-  @override
-  Widget build(BuildContext context) {
-    return HomeScreen(onContinue: onContinue, onRecords: onRecords);
-  }
-}
-
-class FrontendMyPageScreen extends StatefulWidget {
-  const FrontendMyPageScreen({super.key});
-
-  @override
-  State<FrontendMyPageScreen> createState() => _FrontendMyPageScreenState();
-}
-
-class _FrontendMyPageScreenState extends State<FrontendMyPageScreen> {
-  final _library = _StudyLibrary();
-
-  @override
-  void dispose() {
-    _library.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _LibraryScope(notifier: _library, child: const _MyPage());
   }
 }

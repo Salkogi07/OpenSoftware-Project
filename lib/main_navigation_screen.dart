@@ -1,130 +1,13 @@
 import 'package:flutter/material.dart';
-import 'theme.dart';
-import 'vocabulary_screen.dart';
 import 'frontend_screens.dart' as frontend;
 
-class MainNavigationScreen extends StatefulWidget {
+// 로그인 뒤 화면: 디자인(frontend_screens.dart)의 하단 탭 화면을 디자인 테마로 보여줍니다.
+// 홈·학습(주제 → 퀴즈 → 해설 → 완료)·기록·마이 탭과 오답노트 저장은 MainScreen이 맡습니다.
+class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
-}
-
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
-
-  void _selectTab(int index) {
-    setState(() => _currentIndex = index);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          frontend.FrontendHomeScreen(
-            onContinue: () => _selectTab(1),
-            onRecords: () => _selectTab(2),
-          ),
-          const StudyScreen(),
-          const RecordScreen(),
-          const frontend.FrontendMyPageScreen(),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _selectTab,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: '홈',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined),
-            activeIcon: Icon(Icons.menu_book),
-            label: '학습',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_outlined),
-            activeIcon: Icon(Icons.bar_chart),
-            label: '기록',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: '마이',
-          ),
-        ],
-      ),
-    );
+    return Theme(data: frontend.frontendTheme, child: const frontend.MainScreen());
   }
-}
-
-// 탭별 임시 화면
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('에르 - 홈')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.accentOrange,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text('3일 연속 학습 중!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {},
-              child: const Text('오늘의 퀴즈 풀기'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class StudyScreen extends StatelessWidget {
-  const StudyScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('학습 탭')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('학습 화면 내용이 들어갈 자리입니다'),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const VocabularyScreen()),
-                ),
-                icon: const Icon(Icons.bookmark_outline),
-                label: const Text('단어장 복습'),
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-class RecordScreen extends StatelessWidget {
-  const RecordScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('기록 탭')), body: const Center(child: Text('기록 화면 내용이 들어갈 자리입니다')));
-}
-
-class MyPageScreen extends StatelessWidget {
-  const MyPageScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('마이페이지 탭')), body: const Center(child: Text('마이페이지 화면 내용이 들어갈 자리입니다')));
 }
