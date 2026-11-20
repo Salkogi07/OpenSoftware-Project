@@ -1,11 +1,7 @@
 part of 'frontend_screens.dart';
 
-const _homeBackground = Color(0xfffcfbfa);
-const _homeInk = Color(0xff233042);
-const _homeGreen = Color(0xff3c6954);
-const _homeMint = Color(0xffdeefe5);
-const _homeMuted = Color(0xff606b68);
-const _homeBorder = Color(0xffe9ebee);
+const _homeInk = navy;
+const _homeGreen = Color(0xff307c34);
 const _homeMascotAsset = 'assets/images/chick_mascot_transparent.png';
 
 TextStyle _pretendardText(
@@ -20,13 +16,17 @@ TextStyle _pretendardText(
   fontVariations: [FontVariation('wght', weight)],
 );
 
+TextStyle _homeText(
+  double size, {
+  double weight = 400,
+  Color color = _homeInk,
+}) => _pretendardText(size, weight: weight, color: color);
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.onContinue, this.onRecords});
 
   final VoidCallback onContinue;
   final VoidCallback? onRecords;
-
-  /// 하루 목표 문제 수
   static const goal = 10;
 
   @override
@@ -35,228 +35,246 @@ class HomeScreen extends StatelessWidget {
     final completed = library?.summary.todayAnswers ?? 0;
     final streak = library?.streak ?? 0;
     final level = levelFor(library?.summary.xp ?? 0).level;
-
+    final text = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: _homeBackground,
-      appBar: _tabAppBar(
-        '하루어휘 - 홈',
-        actions: [
-          IconButton(
-            tooltip: '알림',
-            onPressed: () => _showNotifications(context),
-            icon: const Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(Icons.notifications_none_rounded, size: 31),
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color(0xffee8b47),
-                      shape: BoxShape.circle,
+      appBar: _tabAppBar(context, '하루어휘 - 홈', showDivider: false),
+      body: ScreenBody(
+        contentPadding: const EdgeInsets.fromLTRB(15, 12, 15, 0),
+        footerPadding: const EdgeInsets.fromLTRB(14, 12, 14, 11),
+        footer: FilledButton.icon(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(59),
+            backgroundColor: const Color(0xff1d3446),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(13),
+            ),
+            textStyle: _homeText(20, weight: 800),
+          ),
+          onPressed: onContinue,
+          icon: const Icon(Icons.play_arrow_rounded, size: 30),
+          label: const Text('이어 학습하기'),
+        ),
+        children: [
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 9),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '오늘도',
+                            style: text.headlineMedium?.copyWith(
+                              fontSize: 34,
+                              height: 1.12,
+                            ),
+                          ),
+                          DecoratedBox(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.transparent,
+                                  mint,
+                                  mint,
+                                ],
+                                stops: [0, .75, .76, 1],
+                              ),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              '한 단어씩!',
+                              style: text.headlineMedium?.copyWith(
+                                fontSize: 34,
+                                height: 1.12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: SizedBox.square(dimension: 7),
+                    const SizedBox(height: 20),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: 6,
+                        children: [
+                          _HomeBadge(
+                            icon: const Icon(
+                              Icons.local_fire_department_rounded,
+                              color: _tabSelectedColor,
+                              size: 17,
+                            ),
+                            label: '$streak일 연속',
+                            background: const Color(0xffffe3cd),
+                            foreground: navy,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 20,
+                            color: const Color(0xff75af77),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const _StudyBars(color: Color(0xff78ba7c)),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Lv.$level',
+                                style: _homeText(
+                                  16,
+                                  weight: 850,
+                                  color: _homeGreen,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 174),
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const FractionallySizedBox(
+                            widthFactor: .87,
+                            heightFactor: .84,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Color(0xffe3f6e9),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                          const Positioned(
+                            bottom: 4,
+                            left: 35,
+                            right: 30,
+                            height: 12,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Color(0xffcaedd6),
+                                borderRadius: BorderRadius.all(
+                                  Radius.elliptical(70, 10),
+                                ),
+                              ),
+                            ),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: .91,
+                            heightFactor: 1,
+                            child: Image.asset(
+                              _greetingMascot,
+                              fit: BoxFit.contain,
+                              semanticLabel: '하루어휘 병아리',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
-            color: _homeInk,
-          ),
-        ],
-      ),
-      body: ScreenBody(
-        contentPadding: const EdgeInsets.fromLTRB(18, 27, 18, 24),
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 6),
-            child: _HomeGreeting(),
-          ),
-          const SizedBox(height: 19),
-          Wrap(
-            spacing: 14,
-            runSpacing: 8,
-            children: [
-              _HomeBadge(
-                icon: const Text(
-                  '🔥',
-                  style: TextStyle(fontSize: 19, height: 1),
-                ),
-                label: '$streak일 연속',
-                background: Color(0xfffae6c8),
-                foreground: Color(0xff514b3f),
-              ),
-              _HomeBadge(
-                icon: const _StudyBars(
-                  color: Color(0xff365e70),
-                  lastColor: Color(0xff76a99a),
-                ),
-                label: 'Lv.$level',
-                background: _homeMint,
-                foreground: _homeGreen,
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          _DailyProgress(completed: completed, goal: goal),
-          const SizedBox(height: 20),
-          _HomeMascotCard(remaining: math.max(0, goal - completed)),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 46),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-              backgroundColor: _homeInk,
-              shape: buttonShape,
-              textStyle: _homeText(17, weight: 750),
-            ),
-            icon: const Icon(Icons.play_arrow_rounded, size: 26),
-            label: const Text('이어 학습하기'),
-            onPressed: onContinue,
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
+          const SizedBox(height: 28),
+          Text('오늘의 단어', style: _homeText(18, weight: 850)),
+          const SizedBox(height: 9),
+          OutlinedButton(
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, 43),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-              foregroundColor: _homeInk,
-              side: const BorderSide(color: Color(0xff818987)),
-              shape: buttonShape,
-              textStyle: _homeText(17, weight: 750),
+              minimumSize: const Size.fromHeight(69),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              side: const BorderSide(color: Color(0xffddd8d0)),
             ),
-            icon: const _StudyBars(color: _homeInk),
-            label: const Text('나의 기록'),
-            onPressed:
-                onRecords ??
-                () => _showRecords(context, streak, level, completed),
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (context) => const AlertDialog(
+                title: Text('사뿐사뿐'),
+                content: Text('가볍게 발을 내디디는 모양.\n\n고양이가 복도를 사뿐사뿐 걸었다.'),
+              ),
+            ),
+            child: Row(
+              children: [
+                if (MediaQuery.sizeOf(context).width >= 220) ...[
+                  const SizedBox(
+                    width: 46,
+                    height: 44,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Color(0xffe6f5e9),
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                      ),
+                      child: Center(
+                        child: CustomPaint(
+                          size: Size(26, 26),
+                          painter: _HomeWordIcon(speaker: false),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('사뿐사뿐', style: _homeText(20, weight: 850)),
+                      Text(
+                        '가볍게 발을 내디디는 모양',
+                        style: _pretendardText(13, weight: 500, color: _muted),
+                      ),
+                    ],
+                  ),
+                ),
+                if (MediaQuery.sizeOf(context).width >= 220)
+                  const CustomPaint(
+                    size: Size(25, 25),
+                    painter: _HomeWordIcon(speaker: true),
+                  ),
+              ],
+            ),
           ),
+          const SizedBox(height: 20),
+          _DailyProgress(
+            completed: completed,
+            goal: library?.dailyGoal ?? goal,
+          ),
+          if (onRecords != null && library?.preview != true)
+            TextButton(onPressed: onRecords, child: const Text('나의 기록')),
         ],
       ),
     );
   }
-
-  void _showNotifications(BuildContext context) => showDialog<void>(
-    context: context,
-    useRootNavigator: false,
-    builder: (context) => AlertDialog(
-      title: const Text('알림'),
-      content: const Text('표시할 알림이 없어요.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('닫기'),
-        ),
-      ],
-    ),
-  );
-
-  void _showRecords(
-    BuildContext context,
-    int streak,
-    int level,
-    int completed,
-  ) => showDialog<void>(
-    context: context,
-    useRootNavigator: false,
-    builder: (context) => AlertDialog(
-      title: const Text('나의 기록'),
-      content: Text(
-        '연속 학습 $streak일 · Lv.$level\n오늘은 $goal개 중 $completed개를 공부했어요.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('닫기'),
-        ),
-      ],
-    ),
-  );
-}
-
-TextStyle _homeText(
-  double size, {
-  double weight = 400,
-  Color color = _homeInk,
-}) => _pretendardText(size, weight: weight, color: color);
-
-class _HomeGreeting extends StatelessWidget {
-  const _HomeGreeting();
-
-  @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.centerLeft,
-    child: Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Text.rich(
-          TextSpan(
-            children: [
-              const TextSpan(text: '오늘도 '),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.baseline,
-                baseline: TextBaseline.alphabetic,
-                child: Stack(
-                  children: [
-                    const Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: _homeMint,
-                          borderRadius: BorderRadius.all(
-                            Radius.elliptical(40, 8),
-                          ),
-                        ),
-                        child: SizedBox(height: 9),
-                      ),
-                    ),
-                    Text('한 단어씩,', style: _homeText(25, weight: 800)),
-                  ],
-                ),
-              ),
-              const TextSpan(text: ' 차근차근.'),
-            ],
-          ),
-          style: _homeText(25, weight: 800),
-        ),
-        const Positioned(top: -9, right: -12, child: _HomeRays()),
-      ],
-    ),
-  );
-}
-
-class _HomeRays extends StatelessWidget {
-  const _HomeRays();
-
-  @override
-  Widget build(BuildContext context) =>
-      const CustomPaint(size: Size(18, 18), painter: _HomeRaysPainter());
-}
-
-class _HomeRaysPainter extends CustomPainter {
-  const _HomeRaysPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xfff3b550)
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(const Offset(2, 8), const Offset(4, 2), paint);
-    canvas.drawLine(const Offset(7, 10), const Offset(12, 5), paint);
-    canvas.drawLine(const Offset(9, 15), const Offset(16, 13), paint);
-  }
-
-  @override
-  bool shouldRepaint(_HomeRaysPainter oldDelegate) => false;
 }
 
 class _StudyBars extends StatelessWidget {
-  const _StudyBars({required this.color, this.lastColor});
+  const _StudyBars({required this.color});
 
   final Color color;
-  final Color? lastColor;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -266,11 +284,11 @@ class _StudyBars extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        _bar(9, color),
+        _bar(8, color),
         const SizedBox(width: 2),
-        _bar(15, color),
+        _bar(12, color),
         const SizedBox(width: 2),
-        _bar(lastColor == null ? 7 : 15, lastColor ?? color),
+        _bar(16, color),
       ],
     ),
   );
@@ -305,16 +323,16 @@ class _HomeBadge extends StatelessWidget {
       borderRadius: const BorderRadius.all(Radius.circular(12)),
     ),
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           ExcludeSemantics(child: icon),
-          const SizedBox(width: 7),
+          const SizedBox(width: 4),
           Flexible(
             child: Text(
               label,
-              style: _homeText(15, weight: 750, color: foreground),
+              style: _homeText(14, weight: 850, color: foreground),
             ),
           ),
         ],
@@ -331,16 +349,17 @@ class _DailyProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
+    constraints: const BoxConstraints(minHeight: 140),
+    padding: const EdgeInsets.fromLTRB(18, 19, 18, 19),
     decoration: BoxDecoration(
-      border: Border.all(color: _homeBorder),
-      borderRadius: const BorderRadius.all(Radius.circular(15)),
+      color: const Color(0xffeaf8ef),
+      borderRadius: const BorderRadius.all(Radius.circular(12)),
     ),
     child: Column(
       children: [
         Row(
           children: [
-            Expanded(child: Text('오늘의 학습', style: _homeText(18, weight: 750))),
+            Expanded(child: Text('오늘의 목표', style: _homeText(22, weight: 850))),
             const SizedBox(width: 8),
             Text.rich(
               TextSpan(
@@ -352,127 +371,106 @@ class _DailyProgress extends StatelessWidget {
                   TextSpan(text: ' / $goal'),
                 ],
               ),
-              style: _homeText(17, weight: 650),
+              style: _homeText(21, weight: 850),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
         LinearProgressIndicator(
           value: math.min(1, completed / goal),
-          minHeight: 12,
+          minHeight: 15,
           stopIndicatorRadius: 0,
           trackGap: 0,
           borderRadius: const BorderRadius.all(Radius.circular(8)),
           color: _homeGreen,
-          backgroundColor: Color(0xffe5f2ea),
+          backgroundColor: const Color(0xffccefd5),
           semanticsLabel: '오늘의 학습 진행률',
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            const Icon(
+              Icons.track_changes_rounded,
+              size: 25,
+              color: _tabSelectedColor,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                completed >= goal
+                    ? '오늘의 목표를 달성했어요!'
+                    : '${goal - completed}문제만 더 풀면 목표 달성!',
+              ),
+            ),
+          ],
         ),
       ],
     ),
   );
 }
 
-class _HomeMascotCard extends StatelessWidget {
-  const _HomeMascotCard({required this.remaining});
+class _HomeWordIcon extends CustomPainter {
+  const _HomeWordIcon({required this.speaker});
 
-  final int remaining;
-
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(20),
-    child: DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xfff1f7f2), Color(0xffe9f5ee)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        children: [
-          const Positioned(right: -32, bottom: -39, child: _MascotHill(74)),
-          const Positioned(right: 5, bottom: -63, child: _MascotHill(100)),
-          const Positioned(right: 63, bottom: -56, child: _MascotHill(72)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-            child: Row(
-              children: [
-                Flexible(
-                  flex: 2,
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 136,
-                    child: Stack(
-                      alignment: Alignment.bottomCenter,
-                      children: [
-                        const Positioned(
-                          bottom: 1,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Color(0xffd5e7de),
-                              borderRadius: BorderRadius.all(
-                                Radius.elliptical(42, 6),
-                              ),
-                            ),
-                            child: SizedBox(width: 84, height: 12),
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: Image.asset(
-                            _homeMascotAsset,
-                            fit: BoxFit.contain,
-                            semanticLabel: '하루어휘 병아리',
-                          ),
-                        ),
-                        const Positioned(top: 4, right: 4, child: _HomeRays()),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const SizedBox(
-                  width: 1,
-                  height: 64,
-                  child: ColoredBox(color: Color(0xffd9e8df)),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '오늘도 한 단어씩!',
-                        style: _homeText(23, weight: 800, color: _homeGreen),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '목표까지 $remaining문제 남았어요.',
-                        style: _homeText(15, color: _homeMuted),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _MascotHill extends StatelessWidget {
-  const _MascotHill(this.diameter);
-
-  final double diameter;
+  final bool speaker;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(
-      color: Color(0xffd8ebdf),
-      shape: BoxShape.circle,
-    ),
-    child: SizedBox.square(dimension: diameter),
-  );
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 24, size.height / 24);
+    final paint = Paint()
+      ..color = speaker ? const Color(0xff717477) : _homeGreen
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.7
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    if (speaker) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(10, 4)
+          ..lineTo(6, 8)
+          ..lineTo(3, 8)
+          ..quadraticBezierTo(2, 8, 2, 9)
+          ..lineTo(2, 15)
+          ..quadraticBezierTo(2, 16, 3, 16)
+          ..lineTo(6, 16)
+          ..lineTo(10, 20)
+          ..quadraticBezierTo(11.5, 21, 11.5, 19)
+          ..lineTo(11.5, 5)
+          ..quadraticBezierTo(11.5, 3, 10, 4),
+        paint,
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(15, 8)
+          ..quadraticBezierTo(19, 12, 15, 16),
+        paint,
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(18, 5.5)
+          ..quadraticBezierTo(24, 12, 18, 18.5),
+        paint,
+      );
+    } else {
+      canvas.drawPath(
+        Path()
+          ..moveTo(12, 5.5)
+          ..quadraticBezierTo(7, 1.8, 1.5, 5)
+          ..lineTo(1.5, 20)
+          ..quadraticBezierTo(7, 17, 12, 20)
+          ..quadraticBezierTo(17, 17, 22.5, 20)
+          ..lineTo(22.5, 5)
+          ..quadraticBezierTo(17, 1.8, 12, 5.5)
+          ..close(),
+        paint,
+      );
+      canvas.drawLine(const Offset(12, 5.5), const Offset(12, 20), paint);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_HomeWordIcon oldDelegate) =>
+      oldDelegate.speaker != speaker;
 }

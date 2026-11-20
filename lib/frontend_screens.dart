@@ -1,49 +1,108 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'learning/learning_repository.dart';
 import 'learning/learning_stats.dart';
+import 'record_screen.dart' as team_record;
 
 part 'home_page.dart';
 part 'my_page.dart';
+part 'study_preview.dart';
+part 'frame_icons.dart';
 
 void main() => runApp(const VocabularyApp());
 
-const navy = Color(0xff1d2d44);
-const green = Color(0xff2f6b55);
-const mint = Color(0xffe3f5ed);
+const navy = Color(0xff082440);
+const green = Color(0xff087d17);
+const mint = Color(0xffe7f7eb);
 const orange = Color(0xffffe4bf);
 
-const _tabSelectedColor = Color(0xffc76a13);
+const _tabSelectedColor = Color(0xffef6b00);
 const _tabUnselectedColor = Color(0xff697370);
 const _tabDividerColor = Color(0xffeeeeee);
 
-AppBar _tabAppBar(String title, {List<Widget>? actions}) => AppBar(
-  title: Text(title),
+double _phoneSpacing(BuildContext context, double value) {
+  const referenceWidth = 360.0;
+  final width = MediaQuery.sizeOf(context).width.clamp(300.0, 420.0);
+  return value * width / referenceWidth;
+}
+
+AppBar _tabAppBar(
+  BuildContext context,
+  String title, {
+  List<Widget>? actions,
+  bool showBack = true,
+  String visibleTitle = '하루어휘',
+  double? toolbarHeight,
+  bool showDivider = true,
+}) => AppBar(
+  title: Semantics(
+    label: title == '하루어휘' ? null : title,
+    child: Text(visibleTitle),
+  ),
+  automaticallyImplyLeading: false,
+  leading: showBack && Navigator.of(context).canPop()
+      ? IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const _FrameIcon(_FrameSymbol.back, color: navy),
+        )
+      : null,
   centerTitle: true,
+  toolbarHeight: toolbarHeight ?? _phoneSpacing(context, 60),
   backgroundColor: Colors.white,
   elevation: 0,
   scrolledUnderElevation: 0,
   titleTextStyle: const TextStyle(
-    color: Color(0xff171717),
+    color: navy,
     fontFamily: 'Pretendard',
-    fontSize: 20,
-    fontWeight: FontWeight.w800,
+    fontSize: 23,
+    fontVariations: [FontVariation('wght', 850)],
   ),
-  bottom: const PreferredSize(
-    preferredSize: Size.fromHeight(1),
-    child: Divider(height: 1, thickness: 1, color: _tabDividerColor),
-  ),
-  actions: actions,
+  bottom: showDivider
+      ? const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, thickness: 1, color: _tabDividerColor),
+        )
+      : null,
+  actions: [
+    ...?actions,
+    Builder(
+      builder: (context) => IconButton(
+        tooltip: '알림',
+        icon: const Stack(
+          children: [
+            _FrameIcon(_FrameSymbol.bell, color: navy),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: CircleAvatar(
+                radius: 3,
+                backgroundColor: _tabSelectedColor,
+              ),
+            ),
+          ],
+        ),
+        onPressed: () => showDialog<void>(
+          context: context,
+          builder: (_) => const AlertDialog(
+            title: Text('알림'),
+            content: Text('표시할 알림이 없어요.'),
+          ),
+        ),
+      ),
+    ),
+  ],
 );
 
-const cardRadius = BorderRadius.all(Radius.circular(24));
+const cardRadius = BorderRadius.all(Radius.circular(14));
 const cardPadding = EdgeInsets.all(20);
 const buttonShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.all(Radius.circular(20)),
+  borderRadius: BorderRadius.all(Radius.circular(15)),
 );
 const feedbackDuration = Duration(milliseconds: 250);
 
@@ -61,6 +120,23 @@ final frontendTheme = ThemeData(
     surface: Colors.white,
   ),
   scaffoldBackgroundColor: Colors.white,
+  chipTheme: const ChipThemeData(
+    backgroundColor: Colors.white,
+    selectedColor: mint,
+    checkmarkColor: green,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(9)),
+    ),
+    padding: EdgeInsets.zero,
+    side: BorderSide(color: Color(0xffe4eceb)),
+    labelStyle: TextStyle(
+      fontFamily: 'Pretendard',
+      fontSize: 11,
+      height: 1.2,
+      color: navy,
+      fontVariations: [FontVariation('wght', 850)],
+    ),
+  ),
   navigationBarTheme: NavigationBarThemeData(
     backgroundColor: Colors.white,
     surfaceTintColor: Colors.transparent,
@@ -76,8 +152,8 @@ final frontendTheme = ThemeData(
     ),
     labelTextStyle: WidgetStateProperty.resolveWith(
       (states) => states.contains(WidgetState.selected)
-          ? _pretendardText(13, weight: 700, color: _tabSelectedColor)
-          : _pretendardText(13, weight: 500, color: _tabUnselectedColor),
+          ? _pretendardText(14, weight: 750, color: _tabSelectedColor)
+          : _pretendardText(14, weight: 650, color: _tabUnselectedColor),
     ),
   ),
   textTheme: const TextTheme(
@@ -88,13 +164,13 @@ final frontendTheme = ThemeData(
     ),
     titleLarge: TextStyle(
       fontSize: 20,
-      fontWeight: FontWeight.w700,
-      height: 1.4,
+      fontWeight: FontWeight.w800,
+      height: 1.25,
     ),
     titleMedium: TextStyle(
       fontSize: 18,
-      fontWeight: FontWeight.w600,
-      height: 1.4,
+      fontWeight: FontWeight.w800,
+      height: 1.25,
     ),
     bodyLarge: TextStyle(fontSize: 16, height: 1.5),
     bodyMedium: TextStyle(fontSize: 15, height: 1.5),
@@ -113,23 +189,23 @@ final frontendTheme = ThemeData(
   ),
   filledButtonTheme: FilledButtonThemeData(
     style: FilledButton.styleFrom(
-      minimumSize: const Size.fromHeight(56),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      minimumSize: const Size.fromHeight(50),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
       backgroundColor: navy,
       foregroundColor: Colors.white,
       shape: buttonShape,
       animationDuration: feedbackDuration,
-      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+      textStyle: _pretendardText(19, weight: 820),
     ),
   ),
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
-      minimumSize: const Size.fromHeight(56),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      minimumSize: const Size.fromHeight(50),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
       foregroundColor: navy,
       shape: buttonShape,
       animationDuration: feedbackDuration,
-      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      textStyle: _pretendardText(19, weight: 820),
     ),
   ),
 );
@@ -143,7 +219,7 @@ class VocabularyApp extends StatelessWidget {
       title: '하루어휘',
       debugShowCheckedModeBanner: false,
       theme: frontendTheme,
-      home: const MainScreen(),
+      home: const MainScreen(preview: true),
     );
   }
 }
@@ -154,12 +230,14 @@ class ScreenBody extends StatelessWidget {
     super.key,
     required this.children,
     this.footer,
+    this.footerPadding,
     this.controller,
     this.contentPadding,
   });
 
   final List<Widget> children;
   final Widget? footer;
+  final EdgeInsetsGeometry? footerPadding;
   final ScrollController? controller;
   final EdgeInsetsGeometry? contentPadding;
 
@@ -177,9 +255,9 @@ class ScreenBody extends StatelessWidget {
                   padding:
                       contentPadding ??
                       EdgeInsets.fromLTRB(
-                        MediaQuery.sizeOf(context).width < 600 ? 20 : 24,
-                        16,
-                        MediaQuery.sizeOf(context).width < 600 ? 20 : 24,
+                        _phoneSpacing(context, 15),
+                        _phoneSpacing(context, 12),
+                        _phoneSpacing(context, 15),
                         24,
                       ),
                   children: children,
@@ -187,7 +265,14 @@ class ScreenBody extends StatelessWidget {
               ),
               if (footer != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  padding:
+                      footerPadding ??
+                      EdgeInsets.fromLTRB(
+                        _phoneSpacing(context, 15),
+                        12,
+                        _phoneSpacing(context, 15),
+                        _phoneSpacing(context, 46),
+                      ),
                   child: footer,
                 ),
             ],
@@ -199,7 +284,9 @@ class ScreenBody extends StatelessWidget {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({super.key, this.preview = false});
+
+  final bool preview;
 
   static void goHome(BuildContext context) {
     context.findAncestorStateOfType<_MainScreenState>()!.goHome();
@@ -211,7 +298,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int selectedTab = 0;
-  final library = _StudyLibrary();
+  late final library = _StudyLibrary(preview: widget.preview);
   final navigatorKeys = [
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
@@ -242,59 +329,108 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return _LibraryScope(
       notifier: library,
-      child: Scaffold(
-        body: IndexedStack(
-          index: selectedTab,
-          children: [
-            for (var tabIndex = 0; tabIndex < 4; tabIndex++)
-              if (tabIndex == 2)
-                const RecordScreen()
-              else
-                _tabNavigator(
-                  tabIndex,
-                  navigatorKeys[tabIndex == 3 ? 2 : tabIndex],
+      child: ColoredBox(
+        color: widget.preview ? const Color(0xfff2f5f8) : Colors.white,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: widget.preview && kIsWeb ? 390 : double.infinity,
+            ),
+            child: Scaffold(
+              body: IndexedStack(
+                index: selectedTab,
+                children: [
+                  for (var tabIndex = 0; tabIndex < 4; tabIndex++)
+                    if (tabIndex == 2)
+                      const team_record.RecordScreen()
+                    else
+                      _tabNavigator(
+                        tabIndex,
+                        navigatorKeys[tabIndex == 3 ? 2 : tabIndex],
+                      ),
+                ],
+              ),
+              bottomNavigationBar: DecoratedBox(
+                position: DecorationPosition.foreground,
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: _tabDividerColor)),
                 ),
-          ],
-        ),
-        bottomNavigationBar: DecoratedBox(
-          position: DecorationPosition.foreground,
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: _tabDividerColor)),
-          ),
-          child: NavigationBar(
-            height: 64,
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            selectedIndex: selectedTab,
-            onDestinationSelected: (index) {
-              setState(() => selectedTab = index);
-              library.refresh(); // 탭을 옮길 때마다 최신 기록으로
-            },
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home_rounded),
-                label: '홈',
+                child: ColoredBox(
+                  color: Colors.white,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom:
+                          widget.preview &&
+                              kIsWeb &&
+                              selectedTab == 0 &&
+                              MediaQuery.sizeOf(context).width <= 430
+                          ? 18
+                          : 0,
+                    ),
+                    child: NavigationBar(
+                      height: _phoneSpacing(context, 62),
+                      labelBehavior:
+                          NavigationDestinationLabelBehavior.alwaysShow,
+                      selectedIndex: selectedTab,
+                      onDestinationSelected: (index) {
+                        if (index == 1) {
+                          navigatorKeys[1].currentState?.popUntil(
+                            (route) => route.isFirst,
+                          );
+                        }
+                        setState(() => selectedTab = index);
+                        library.refresh(); // 탭을 옮길 때마다 최신 기록으로
+                      },
+                      destinations: const [
+                        NavigationDestination(
+                          icon: _FrameIcon(_FrameSymbol.home),
+                          selectedIcon: _FrameIcon(
+                            _FrameSymbol.home,
+                            active: true,
+                          ),
+                          label: '홈',
+                        ),
+                        NavigationDestination(
+                          icon: _FrameIcon(_FrameSymbol.book),
+                          selectedIcon: _FrameIcon(
+                            _FrameSymbol.book,
+                            active: true,
+                          ),
+                          label: '학습',
+                        ),
+                        NavigationDestination(
+                          icon: _FrameIcon(_FrameSymbol.history),
+                          selectedIcon: _FrameIcon(
+                            _FrameSymbol.history,
+                            active: true,
+                          ),
+                          label: '기록',
+                        ),
+                        NavigationDestination(
+                          icon: _FrameIcon(_FrameSymbol.person),
+                          selectedIcon: _FrameIcon(
+                            _FrameSymbol.person,
+                            active: true,
+                          ),
+                          label: '마이',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              NavigationDestination(
-                icon: Icon(Icons.menu_book_outlined),
-                selectedIcon: Icon(Icons.menu_book_rounded),
-                label: '학습',
-              ),
-              NavigationDestination(
-                icon: _StudyBars(color: _tabUnselectedColor),
-                selectedIcon: _StudyBars(color: _tabSelectedColor),
-                label: '기록',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
-                selectedIcon: Icon(Icons.person_rounded),
-                label: '마이',
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  void _openStudySetup() {
+    final study = navigatorKeys[1].currentState;
+    study?.popUntil((route) => route.isFirst);
+    study?.push(MaterialPageRoute<void>(builder: (_) => const TopicScreen()));
+    setState(() => selectedTab = 1);
   }
 
   Widget _tabNavigator(int tabIndex, GlobalKey<NavigatorState> key) =>
@@ -306,11 +442,11 @@ class _MainScreenState extends State<MainScreen> {
           onGenerateRoute: (_) => MaterialPageRoute<void>(
             builder: (_) => switch (tabIndex) {
               0 => HomeScreen(
-                onContinue: () => setState(() => selectedTab = 1),
+                onContinue: _openStudySetup,
                 onRecords: () => setState(() => selectedTab = 2),
               ),
               1 => const StudyScreen(),
-              _ => const _MyPage(),
+              _ => _MyTab(library: library),
             },
           ),
         ),
@@ -334,7 +470,7 @@ class RecordScreen extends StatelessWidget {
     final status = library == null ? null : _loadStatus(library);
 
     return Scaffold(
-      appBar: _tabAppBar('기록 탭'),
+      appBar: _tabAppBar(context, '기록 탭'),
       body: ScreenBody(
         children: [
           if (status != null) ...[
@@ -467,12 +603,158 @@ class StudyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const TopicScreen();
+    final library = _LibraryScope.watch(context);
+    final completed = library?.studyCompleted ?? 0;
+
+    void setup({String? topic, String? difficulty}) =>
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                TopicScreen(initialTopic: topic, initialDifficulty: difficulty),
+          ),
+        );
+
+    void review() {
+      final saved = library?.saved.values;
+      if (saved != null && saved.isNotEmpty) {
+        _review(context, saved);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('퀴즈에서 하트를 눌러 단어를 저장해 보세요.')),
+        );
+      }
+    }
+
+    return Scaffold(
+      appBar: _tabAppBar(
+        context,
+        '학습 탭',
+        visibleTitle: '학습',
+        toolbarHeight: 45,
+        showDivider: false,
+      ),
+      body: ScreenBody(
+        contentPadding: const EdgeInsets.fromLTRB(12, 6, 12, 16),
+        children: [
+          const _StudyBanner(
+            title: '오늘의 어휘를\n학습해볼까요?',
+            subtitle: '짧은 퀴즈로 쉽고 재미있게 배워요!',
+          ),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              Expanded(
+                child: Text('학습 진행', style: _pretendardText(17, weight: 850)),
+              ),
+              Text.rich(
+                TextSpan(
+                  text: '오늘의 학습 ',
+                  style: _pretendardText(13, weight: 550, color: _muted),
+                  children: [
+                    TextSpan(
+                      text: '$completed',
+                      style: _pretendardText(16, weight: 850, color: green),
+                    ),
+                    TextSpan(
+                      text: ' / 5',
+                      style: _pretendardText(16, weight: 850),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _studyProgress(
+            completed / 5,
+            color: const Color(0xff277c2c),
+            trackColor: const Color(0xffedf5ee),
+          ),
+          const SizedBox(height: 24),
+          _StudyCard(
+            mascot: 'assets/images/chick_calendar.png',
+            tag: '매일 새로운 어휘',
+            title: '오늘의 추천 어휘',
+            subtitle: '지금 꼭 알아야 할 단어 5개!',
+            warm: true,
+            minHeight: 78,
+            cornerRadius: 12,
+            onTap: () => setup(topic: _officialTopic, difficulty: '중'),
+          ),
+          const SizedBox(height: 8),
+          _StudyCard(
+            mascot: 'assets/images/chick_review.png',
+            tag: '틀린 단어 복습',
+            minHeight: 74,
+            cornerRadius: 12,
+            title: '단어장 복습',
+            subtitle: '내가 틀린 단어를 다시 풀어요.',
+            onTap: review,
+          ),
+          const SizedBox(height: 8),
+          _StudyCard(
+            mascot: 'assets/images/chick_topic.png',
+            tag: '주제별로 차근차근',
+            minHeight: 71,
+            cornerRadius: 12,
+            title: '주제별 학습',
+            subtitle: '상황에 맞는 어휘를 골라 배워요.',
+            onTap: () => setup(),
+          ),
+          const SizedBox(height: 23),
+          Row(
+            children: [
+              const _FrameIcon(_FrameSymbol.book, size: 19, color: _studyMuted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '학습 주제 미리보기',
+                  style: _pretendardText(15, weight: 850),
+                ),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () => setup(),
+                child: Text(
+                  '전체 보기 ›',
+                  style: _pretendardText(11, weight: 700, color: _studyMuted),
+                ),
+              ),
+            ],
+          ),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (index, (topic, label, icon))
+                    in _studyTopics.indexed) ...[
+                  if (index > 0) const SizedBox(width: 5),
+                  Expanded(
+                    child: _StudyTopicTile(
+                      label: label,
+                      icon: icon,
+                      onTap: () => setup(topic: topic),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 class TopicScreen extends StatefulWidget {
-  const TopicScreen({super.key});
+  const TopicScreen({super.key, this.initialTopic, this.initialDifficulty});
+
+  final String? initialTopic;
+  final String? initialDifficulty;
 
   @override
   State<TopicScreen> createState() => _TopicScreenState();
@@ -487,8 +769,8 @@ class _TopicScreenState extends State<TopicScreen> {
 
   late Future<List<Word>> bank = loadQuestions();
   final remaining = <(String, String), List<Word>>{};
-  String? topic;
-  String? difficulty;
+  late String? topic = widget.initialTopic;
+  late String? difficulty = widget.initialDifficulty;
 
   Future<List<Word>> loadQuestions() async {
     final source = await rootBundle.loadString('assets/questions.json');
@@ -518,9 +800,11 @@ class _TopicScreenState extends State<TopicScreen> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: _tabAppBar('학습 탭'),
+      appBar: _tabAppBar(context, '하루어휘', showBack: false),
       body: FutureBuilder<List<Word>>(
-        future: bank,
+        future: _LibraryScope.watch(context)?.preview == true
+            ? _previewBank
+            : bank,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return ScreenBody(
@@ -533,6 +817,7 @@ class _TopicScreenState extends State<TopicScreen> {
               ],
             );
           }
+          final preview = _LibraryScope.watch(context)?.preview ?? false;
           final words = snapshot.data;
           if (words == null) {
             return const Center(child: CircularProgressIndicator());
@@ -540,19 +825,36 @@ class _TopicScreenState extends State<TopicScreen> {
           final selectedTopic = topic;
           final selectedDifficulty = difficulty;
           return ScreenBody(
+            footer: FilledButton(
+              onPressed: selectedTopic == null || selectedDifficulty == null
+                  ? null
+                  : () {
+                      if (ModalRoute.of(context)?.isCurrent != true) return;
+                      List<Word> next() => preview
+                          ? _previewQuestions(selectedTopic, selectedDifficulty)
+                          : nextBatch(words, selectedTopic, selectedDifficulty);
+                      openQuiz(context, next(), nextBatch: next);
+                    },
+              child: const Text('5문제 시작하기'),
+            ),
             children: [
               Text('학습 주제', style: text.headlineMedium),
               const SizedBox(height: 8),
               const Text('주제와 난이도를 골라 5문제를 풀어보세요.'),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 4,
+                runSpacing: 2,
                 children: [
                   for (final category
                       in words.map((word) => word.topic).toSet())
                     ChoiceChip(
-                      label: Text(category),
+                      label: Text(
+                        category,
+                        style: _pretendardText(11, weight: 850),
+                      ),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
                       selected: selectedTopic == category,
                       onSelected: (_) => setState(() => topic = category),
                     ),
@@ -566,28 +868,18 @@ class _TopicScreenState extends State<TopicScreen> {
               Text('난이도', style: text.titleLarge),
               const SizedBox(height: 8),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 4,
+                runSpacing: 2,
                 children: [
                   for (final entry in difficulties.entries)
                     ChoiceChip(
                       label: Text('${entry.key} · ${entry.value}'),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
                       selected: selectedDifficulty == entry.key,
                       onSelected: (_) => setState(() => difficulty = entry.key),
                     ),
                 ],
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: selectedTopic == null || selectedDifficulty == null
-                    ? null
-                    : () {
-                        if (ModalRoute.of(context)?.isCurrent != true) return;
-                        List<Word> next() =>
-                            nextBatch(words, selectedTopic, selectedDifficulty);
-                        openQuiz(context, next(), nextBatch: next);
-                      },
-                child: const Text('5문제 시작하기'),
               ),
             ],
           );
@@ -611,6 +903,8 @@ class Word {
     this.choices,
     this.answerIndex,
     this.explanation,
+    this.usesBlank = false,
+    this.hint,
   });
 
   factory Word.fromJson(Map<String, dynamic> json) => Word(
@@ -635,6 +929,8 @@ class Word {
   final List<String>? choices;
   final int? answerIndex;
   final String? explanation;
+  final bool usesBlank;
+  final String? hint;
 
   String get correctChoice => choices?[answerIndex!] ?? name;
 
@@ -723,11 +1019,18 @@ class _QuizScreenState extends State<QuizScreen> {
       selectedChoice = choice;
     });
     final word = widget.words[questionIndex];
-    if (choice != word.correctChoice) {
-      _LibraryScope.read(context)?.recordMistake(word);
+    final library = _LibraryScope.read(context);
+    final correct = choice == word.correctChoice;
+    if (savedQuestionIndex != questionIndex) {
+      library?.recordPreviewAnswer(word, correct);
     }
-    if (word.id case final id? when savedQuestionIndex != questionIndex) {
-      savedQuestionIndex = questionIndex;
+    if (!correct) {
+      library?.recordMistake(word);
+    }
+    final firstSubmission = savedQuestionIndex != questionIndex;
+    savedQuestionIndex = questionIndex;
+    if (word.id case final id?
+        when firstSubmission && library?.preview != true) {
       learningRepository.recordAnswer(
         questionId: id,
         isCorrect: choice == word.correctChoice,
@@ -748,7 +1051,7 @@ class _QuizScreenState extends State<QuizScreen> {
     if (!mounted) return;
     if (advance == true) answers.add(choice == word.correctChoice);
     if (advance == true && lastQuestion) {
-      learningRepository.markAttendance();
+      if (library?.preview != true) learningRepository.markAttendance();
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) => CompletionScreen(
@@ -777,7 +1080,6 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     final word = widget.words[questionIndex];
-    final text = Theme.of(context).textTheme;
     final choices =
         word.choices ??
         (questionIndex.isEven
@@ -787,107 +1089,360 @@ class _QuizScreenState extends State<QuizScreen> {
         word.prompt ??
         (word.name.isEmpty
             ? word.example
-            : word.example.replaceFirst(word.name, '( ______ )'));
+            : word.example.replaceFirst(word.name, '{빈칸}'));
+    final selected = selectedChoice;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(word.topic),
-        actions: [
-          if (_LibraryScope.watch(context) case final library?)
-            _SaveWordButton(library: library, word: word),
-        ],
-      ),
+      appBar: _tabAppBar(context, '학습 퀴즈', visibleTitle: '학습'),
       body: ScreenBody(
         controller: scrollController,
-        children: [
-          Row(
+        contentPadding: const EdgeInsets.fromLTRB(13, 23, 13, 14),
+        footerPadding: const EdgeInsets.fromLTRB(13, 12, 13, 47),
+        footer: FilledButton(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(56),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(19),
+            ),
+            backgroundColor: const Color(0xff082746),
+            disabledBackgroundColor: const Color(0xff29425b),
+            disabledForegroundColor: Colors.white70,
+            textStyle: _pretendardText(22, weight: 850),
+          ),
+          onPressed: selected == null || showingExplanation
+              ? null
+              : () => submitAnswer(selected),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: LinearProgressIndicator(
-                  value: questionIndex / widget.words.length,
-                  minHeight: 10,
-                  borderRadius: BorderRadius.circular(8),
-                  color: green,
-                  backgroundColor: mint,
-                  semanticsLabel:
-                      '퀴즈 진행도, ${widget.words.length}문제 중 $questionIndex문제 완료',
-                ),
-              ),
-              const SizedBox(width: 16),
-              Text('${questionIndex + 1} / ${widget.words.length}'),
+              Text('정답 확인하기'),
+              SizedBox(width: 7),
+              Icon(Icons.arrow_forward_ios_rounded, size: 21),
             ],
           ),
-          const SizedBox(height: 24),
-          Text(
-            widget.isReview
-                ? '복습 · 난이도 ${word.difficulty ?? ""}'
-                : '난이도 ${word.difficulty ?? ""}',
-            style: text.titleLarge,
-          ),
-          const SizedBox(height: 20),
-          Card(
-            color: mint,
-            elevation: 0,
-            margin: EdgeInsets.zero,
-            shape: const RoundedRectangleBorder(borderRadius: cardRadius),
-            child: Padding(
-              padding: cardPadding,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    '문제 ${questionIndex + 1}',
-                    style: text.labelLarge?.copyWith(color: green),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(
+              children: [
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '${questionIndex + 1}',
+                        style: const TextStyle(color: _quizGreen),
+                      ),
+                      TextSpan(text: ' / ${widget.words.length}'),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    prompt,
-                    style: text.titleLarge?.copyWith(fontSize: 23, height: 1.6),
+                  style: _pretendardText(18, weight: 850),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: LinearProgressIndicator(
+                    value: (questionIndex + 1) / widget.words.length,
+                    minHeight: 13,
+                    stopIndicatorRadius: 0,
+                    trackGap: 0,
+                    borderRadius: BorderRadius.circular(8),
+                    color: _quizGreen,
+                    backgroundColor: _quizTrack,
+                    semanticsLabel: '퀴즈 진행률',
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
-          for (final choice in choices)
+          const SizedBox(height: 17),
+          _QuizPromptCard(
+            prompt: prompt,
+            hint: word.hint,
+            usesBlank: word.usesBlank,
+          ),
+          const SizedBox(height: 12),
+          for (final (index, choice) in choices.indexed)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: navy,
-                  minimumSize: const Size.fromHeight(60),
-                  side: BorderSide(
-                    color: green,
-                    width: selectedChoice == choice ? 2.5 : 1,
-                  ),
-                ),
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _QuizChoice(
+                index: index,
+                choice: choice,
+                selected: selected == choice,
                 onPressed: showingExplanation
                     ? null
-                    : () => submitAnswer(choice),
-                child: Row(
-                  children: [
-                    Icon(
-                      selectedChoice == choice
-                          ? Icons.check_circle_outline_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        choice,
-                        style: text.titleMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(width: 22),
-                  ],
-                ),
+                    : () => setState(() => selectedChoice = choice),
               ),
             ),
         ],
       ),
     );
   }
+}
+
+const _quizMascotAsset = 'assets/images/chick_thinking.png';
+const _quizGreen = Color(0xff0b850e);
+const _quizTrack = Color(0xffedf8ee);
+
+class _QuizPromptCard extends StatelessWidget {
+  const _QuizPromptCard({
+    required this.prompt,
+    required this.usesBlank,
+    this.hint,
+  });
+
+  final String prompt;
+  final bool usesBlank;
+  final String? hint;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = prompt.split('{빈칸}');
+    final fillInTheBlank = usesBlank || parts.length > 1;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xffe6f7ea), Color(0xffe1f5e5)],
+                ),
+              ),
+            ),
+          ),
+          const Positioned(
+            left: -28,
+            bottom: -21,
+            child: _BannerHill(width: 102, height: 46),
+          ),
+          const Positioned(
+            right: -22,
+            bottom: -22,
+            child: _BannerHill(width: 92, height: 47),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 15, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 84,
+                      height: 110,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            top: 11,
+                            child: Image.asset(
+                              _quizMascotAsset,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          if (fillInTheBlank)
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: CircleAvatar(
+                                radius: 15,
+                                backgroundColor: const Color(0xffd8f3de),
+                                child: Text(
+                                  '?',
+                                  style: _pretendardText(
+                                    23,
+                                    weight: 850,
+                                    color: _quizGreen,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: const Color(0xffd9f2de),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const _FrameIcon(
+                                    _FrameSymbol.book,
+                                    size: 21,
+                                    color: navy,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      '어휘 퀴즈',
+                                      style: _pretendardText(15, weight: 850),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (fillInTheBlank) ...[
+                            const SizedBox(height: 9),
+                            Text(
+                              '다음 문장의 빈칸에 들어갈 가장 알맞은 단어는?',
+                              style: _pretendardText(
+                                20,
+                                weight: 850,
+                              ).copyWith(height: 1.4),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Container(
+                  constraints: const BoxConstraints(minHeight: 102),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 13,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(17),
+                    color: Colors.white,
+                  ),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        for (final (index, segment) in parts.indexed) ...[
+                          if (index > 0)
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: Container(
+                                width: 79,
+                                constraints: const BoxConstraints(
+                                  minHeight: 32,
+                                ),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xfffff4e8),
+                                  borderRadius: BorderRadius.circular(7),
+                                  border: Border.all(
+                                    color: const Color(0xfff9710e),
+                                    width: 1.4,
+                                  ),
+                                ),
+                                child: Text(
+                                  '?',
+                                  semanticsLabel: '빈칸',
+                                  style: _pretendardText(
+                                    23,
+                                    weight: 900,
+                                    color: const Color(0xffff500e),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          TextSpan(text: index > 0 ? ' $segment' : segment),
+                        ],
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                    style: _pretendardText(
+                      24,
+                      weight: 850,
+                    ).copyWith(height: 1.38),
+                  ),
+                ),
+                if (hint case final value?)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '힌트 · $value',
+                      textAlign: TextAlign.center,
+                      style: _pretendardText(12, weight: 600, color: _muted),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuizChoice extends StatelessWidget {
+  const _QuizChoice({
+    required this.index,
+    required this.choice,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final int index;
+  final String choice;
+  final bool selected;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    child: OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(38),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.fromLTRB(19, 4, 14, 4),
+        backgroundColor: selected ? const Color(0xffe6f7e9) : Colors.white,
+        side: BorderSide(
+          color: selected ? _quizGreen : const Color(0xffedf0f5),
+          width: selected ? 1.4 : 1,
+        ),
+        shape: const StadiumBorder(),
+      ),
+      onPressed: onPressed,
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 13,
+            backgroundColor: selected ? _quizGreen : _quizTrack,
+            child: Text(
+              '${index + 1}',
+              style: _pretendardText(
+                17,
+                weight: 850,
+                color: selected ? Colors.white : _quizGreen,
+              ),
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Text(
+              choice,
+              style: _pretendardText(
+                20,
+                weight: 850,
+                color: selected ? _quizGreen : navy,
+              ),
+            ),
+          ),
+          if (selected)
+            const Icon(Icons.check_circle, color: _quizGreen, size: 25),
+        ],
+      ),
+    ),
+  );
 }
 
 class CompletionScreen extends StatefulWidget {
@@ -1113,11 +1668,12 @@ class _ExplanationScreenState extends State<ExplanationScreen> {
     final word = widget.word;
     final answer = widget.answer;
     final correct = answer == word.correctChoice;
+    final library = _LibraryScope.watch(context);
     final text = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('해설')),
+      appBar: _tabAppBar(context, '해설'),
       body: ScreenBody(
-        contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+        contentPadding: const EdgeInsets.fromLTRB(15, 7, 15, 12),
         footer: FilledButton(
           onPressed: continuing
               ? null
@@ -1141,7 +1697,7 @@ class _ExplanationScreenState extends State<ExplanationScreen> {
                   sad: !correct,
                   child: Image.asset(
                     correct
-                        ? 'assets/images/chick_mascot_happy.png'
+                        ? _celebratingMascot
                         : 'assets/images/chick_mascot_sad.png',
                     width: 80,
                     height: 86,
@@ -1154,17 +1710,27 @@ class _ExplanationScreenState extends State<ExplanationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        correct ? Icons.check_circle : Icons.cancel_outlined,
-                        color: correct ? green : Colors.deepOrange,
-                        size: 22,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        correct ? '정답이에요!' : '아쉬워요!',
-                        style: text.titleLarge?.copyWith(
-                          color: correct ? green : navy,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            correct
+                                ? Icons.check_circle
+                                : Icons.cancel_outlined,
+                            color: correct ? green : _tabSelectedColor,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              correct ? '정답이에요!' : '아쉬워요!',
+                              style: _pretendardText(
+                                23,
+                                weight: 850,
+                                color: correct ? green : navy,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -1184,57 +1750,57 @@ class _ExplanationScreenState extends State<ExplanationScreen> {
             padding: cardPadding,
             decoration: BoxDecoration(
               borderRadius: cardRadius,
-              border: Border.all(color: navy),
+              border: Border.all(color: _line),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (word.choices != null) ...[
-                  Text(
-                    '정답 보기 · ${word.correctChoice}',
-                    style: text.titleMedium,
-                  ),
-                  if (!correct) Text('내가 고른 보기 · $answer'),
-                  const SizedBox(height: 14),
-                ],
-                Text('오늘의 단어', style: text.labelLarge),
-                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: Text('정답 단어', style: text.labelLarge)),
+                    if (library != null)
+                      SizedBox.square(
+                        dimension: 33,
+                        child: _SaveWordButton(library: library, word: word),
+                      ),
+                  ],
+                ),
                 Text(
                   word.name,
-                  style: text.headlineMedium?.copyWith(fontSize: 26),
+                  style: text.headlineMedium?.copyWith(fontSize: 32),
                 ),
-                const SizedBox(height: 14),
-                Text('뜻', style: text.titleMedium),
-                const SizedBox(height: 4),
-                Text(
-                  word.meaning,
-                  style: text.bodyLarge?.copyWith(color: green),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: navy),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        word.explanation == null ? '예문' : '해설',
-                        style: text.titleMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        word.explanation ?? word.example,
-                        style: text.bodyLarge,
-                      ),
-                    ],
-                  ),
-                ),
+                Text(word.meaning, style: text.bodyMedium),
+                if (word.correctChoice != word.name)
+                  Text('정답 보기 · ${word.correctChoice}'),
+                if (!correct) Text('내가 고른 보기 · $answer', style: text.bodySmall),
+                if (word.example.isNotEmpty) ...[
+                  const Divider(color: _line),
+                  Text('예문', style: text.titleMedium),
+                  Text(word.example, style: text.bodyLarge),
+                ],
               ],
             ),
           ),
+          if (word.explanation case final detail?) ...[
+            const SizedBox(height: 12),
+            _MyPanel(
+              color: _warm,
+              child: ListTile(
+                leading: const Icon(
+                  Icons.lightbulb_outline,
+                  color: _tabSelectedColor,
+                ),
+                title: Text(
+                  word.id == null ? '언제 쓰나요?' : '해설',
+                  style: const TextStyle(
+                    color: _rust,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                subtitle: Text(detail),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1269,7 +1835,7 @@ class MascotPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: Image.asset(
           dance
-              ? 'assets/images/chick_mascot_happy.png'
+              ? _celebratingMascot
               : sad
               ? 'assets/images/chick_mascot_sad.png'
               : 'assets/images/chick_mascot.webp',
