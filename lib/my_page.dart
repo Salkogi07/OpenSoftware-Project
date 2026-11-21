@@ -1,12 +1,59 @@
 part of 'frontend_screens.dart';
 
-const _softMint = Color(0xfff0faf6);
 const _warm = Color(0xfffff3e5);
 const _rust = Color(0xff9b4417);
 const _muted = Color(0xff516477);
 const _line = Color(0xffdcebe5);
 
 class _StudyLibrary extends ChangeNotifier {
+  _StudyLibrary({required this.preview}) {
+    if (preview) {
+      streak = 7;
+      summary = const LearningSummary(
+        totalAnswers: 130,
+        correctAnswers: 107,
+        learnedWords: 120,
+        todayAnswers: 7,
+      );
+    }
+  }
+
+  final bool preview;
+  bool previewSignedIn = false;
+  int dailyGoal = HomeScreen.goal;
+  TimeOfDay reminderTime = const TimeOfDay(hour: 20, minute: 0);
+  final _previewLearned = <(String, String)>{};
+
+  int get studyCompleted =>
+      math.min(5, preview ? summary.todayAnswers - 5 : summary.todayAnswers);
+
+  void setPreviewSignedIn(bool signedIn) {
+    previewSignedIn = signedIn;
+    notifyListeners();
+  }
+
+  void recordPreviewAnswer(Word word, bool correct) {
+    if (!preview) return;
+    summary = LearningSummary(
+      totalAnswers: summary.totalAnswers + 1,
+      correctAnswers: summary.correctAnswers + (correct ? 1 : 0),
+      learnedWords:
+          summary.learnedWords + (_previewLearned.add(key(word)) ? 1 : 0),
+      todayAnswers: summary.todayAnswers + 1,
+    );
+    notifyListeners();
+  }
+
+  void setGoal(int goal) {
+    dailyGoal = goal;
+    notifyListeners();
+  }
+
+  void setReminderTime(TimeOfDay time) {
+    reminderTime = time;
+    notifyListeners();
+  }
+
   final saved = <(String, String), Word>{};
   final mistakes = <(String, String), Word>{};
   String nickname = '어휘새싹';
@@ -22,7 +69,7 @@ class _StudyLibrary extends ChangeNotifier {
 
   /// DB에서 연속 출석·요약·어휘장·주간 통계를 다시 불러옴. 탭을 옮기거나 홈으로 돌아올 때 부름
   Future<void> refresh() async {
-    if (!learningRepository.isLoggedIn || _disposed) return;
+    if (preview || _disposed || !learningRepository.isLoggedIn) return;
     loading = true;
     loadError = null;
     notifyListeners();
@@ -149,6 +196,83 @@ class _MyPage extends StatelessWidget {
     if (context.mounted && result != null) library.rename(result);
   }
 
+  Future<void> _editDailyGoal(
+    BuildContext context,
+    _StudyLibrary library,
+  ) async {
+    const customGoal = 0;
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('하루 학습 목표'),
+        children: [
+          for (final goal in [5, 10, 15, 20])
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(goal),
+              child: Text('$goal문제'),
+            ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop(customGoal),
+            child: const Text('직접 입력'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted || selected == null) return;
+
+    final goal = selected == customGoal
+        ? await _inputDailyGoal(context, library.dailyGoal)
+        : selected;
+    if (context.mounted && goal != null) library.setGoal(goal);
+  }
+
+  Future<int?> _inputDailyGoal(BuildContext context, int currentGoal) {
+    final form = GlobalKey<FormState>();
+    var goal = currentGoal;
+    return showDialog<int>(
+      context: context,
+      builder: (context) {
+        void save() {
+          final state = form.currentState!;
+          if (!state.validate()) return;
+          state.save();
+          Navigator.of(context).pop(goal);
+        }
+
+        return AlertDialog(
+          title: const Text('하루 학습 목표 직접 입력'),
+          scrollable: true,
+          content: Form(
+            key: form,
+            child: TextFormField(
+              initialValue: '$currentGoal',
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                labelText: '하루에 풀 문제 수',
+                suffixText: '문제',
+              ),
+              validator: (value) {
+                final count = int.tryParse(value?.trim() ?? '', radix: 10);
+                return count == null || count < 1 ? '1 이상의 정수를 입력해 주세요.' : null;
+              },
+              onSaved: (value) => goal = int.parse(value!.trim(), radix: 10),
+              onFieldSubmitted: (_) => save(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            FilledButton(onPressed: save, child: const Text('저장')),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final library = _LibraryScope.watch(context)!;
@@ -163,11 +287,15 @@ class _MyPage extends StatelessWidget {
     );
 
     return Scaffold(
-      appBar: _tabAppBar('마이페이지 탭'),
+      appBar: _tabAppBar(context, '마이페이지 탭'),
       body: ScreenBody(
-        contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        contentPadding: const EdgeInsets.fromLTRB(14, 8, 14, 24),
         children: [
-          _LevelCard(nickname: library.nickname, xp: library.summary.xp),
+          _LevelCard(
+            nickname: library.nickname,
+            xp: library.summary.xp,
+            onEdit: () => _editProfile(context, library),
+          ),
           const SizedBox(height: 22),
           _MyHeading('나의 학습 현황', trailing: _loadStatus(library)),
           _TileRow(
@@ -176,8 +304,7 @@ class _MyPage extends StatelessWidget {
                 icon: Icons.local_fire_department_rounded,
                 label: '연속 학습',
                 value: '${library.streak}일',
-                background: _warm,
-                ink: _rust,
+                ink: _tabSelectedColor,
               ),
               _MyTile(
                 icon: Icons.track_changes_rounded,
@@ -193,87 +320,57 @@ class _MyPage extends StatelessWidget {
           ),
           const SizedBox(height: 22),
           const _MyHeading('나의 복습'),
-          _ReviewCard(
-            title: '오답노트',
-            description: '틀린 단어를 다시 확인해요.',
-            count: library.mistakes.length,
-            saved: false,
-            onOpen: () => openWords(false),
-            onReview: library.mistakes.isEmpty
-                ? null
-                : () => _review(context, library.mistakes.values),
+          _SettingLink(
+            icon: Icons.assignment_outlined,
+            label: '오답노트',
+            detail: '${library.mistakes.length}개',
+            onTap: () => openWords(false),
           ),
-          const SizedBox(height: 10),
-          _ReviewCard(
-            title: '내 단어장',
-            description: '하트로 저장한 단어를 복습해요.',
-            count: library.saved.length,
-            saved: true,
-            onOpen: () => openWords(true),
-            onReview: library.saved.isEmpty
-                ? null
-                : () => _review(context, library.saved.values),
+          const Divider(height: 1, color: _line),
+          _SettingLink(
+            icon: Icons.favorite_rounded,
+            label: '내 단어장',
+            detail: '${library.saved.length}개',
+            onTap: () => openWords(true),
           ),
-          const SizedBox(height: 22),
-          const _MyHeading('나의 배지'),
-          const _TileRow(
-            tiles: [
-              _MyTile(
-                icon: Icons.local_fire_department_rounded,
-                label: '7일 연속 학습',
-                background: _warm,
-                ink: _rust,
-              ),
-              _MyTile(
-                icon: Icons.workspace_premium_rounded,
-                label: '정답률 80% 달성',
-                background: Color(0xffeeedfa),
-                ink: Color(0xff594493),
-              ),
-              _MyTile(icon: Icons.auto_stories_rounded, label: '학습 단어 100개 달성'),
-            ],
+          const SizedBox(height: 18),
+          const _MyHeading('학습 설정'),
+          _SettingLink(
+            icon: Icons.notifications_none_rounded,
+            label: '알림 설정',
+            detail: library.reminderTime.format(context),
+            onTap: () async {
+              final time = await showTimePicker(
+                context: context,
+                initialTime: library.reminderTime,
+              );
+              if (context.mounted && time != null) {
+                library.setReminderTime(time);
+              }
+            },
           ),
-          const SizedBox(height: 22),
-          const _MyHeading('설정'),
-          _MyPanel(
-            child: Column(
-              children: [
-                _SettingLink(
-                  icon: Icons.notifications_none_rounded,
-                  label: '알림 설정',
-                  onTap: () =>
-                      _openSettings(context, '알림 설정', '학습 알림은 디자인 시안 항목입니다.'),
-                ),
-                const Divider(height: 1, color: _line),
-                _SettingLink(
-                  icon: Icons.person_outline_rounded,
-                  label: '프로필 관리',
-                  onTap: () => _editProfile(context, library),
-                ),
-                const Divider(height: 1, color: _line),
-                _SettingLink(
-                  icon: Icons.settings_outlined,
-                  label: '앱 설정',
-                  onTap: () =>
-                      _openSettings(context, '앱 설정', '하루어휘 · 버전 0.1.0'),
-                ),
-              ],
+          const Divider(height: 1, color: _line),
+          _SettingLink(
+            icon: Icons.track_changes_rounded,
+            label: '하루 학습 목표',
+            detail: '${library.dailyGoal}문제',
+            onTap: () => _editDailyGoal(context, library),
+          ),
+          const Divider(height: 1, color: _line),
+          _SettingLink(
+            icon: Icons.person_outline_rounded,
+            label: '계정 관리',
+            onTap: () => _editProfile(context, library),
+          ),
+          if (library.preview)
+            TextButton(
+              onPressed: () => library.setPreviewSignedIn(false),
+              child: const Text('미리보기 로그아웃'),
             ),
-          ),
         ],
       ),
     );
   }
-
-  void _openSettings(BuildContext context, String title, String detail) =>
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => Scaffold(
-            appBar: AppBar(title: Text(title)),
-            body: ScreenBody(children: [Text(detail)]),
-          ),
-        ),
-      );
 }
 
 /// 정답률 표시: 푼 문제가 없으면 '-'
@@ -282,6 +379,7 @@ String _percent(double? accuracy) =>
 
 /// 불러오는 중·실패·로그인 안 함 상태 안내 (제목 오른쪽 작은 글씨)
 String? _loadStatus(_StudyLibrary library) {
+  if (library.preview) return null;
   if (!learningRepository.isLoggedIn) return '로그인하면 기록이 저장돼요';
   if (library.loading) return '불러오는 중';
   return library.loadError;
@@ -318,7 +416,7 @@ class _MyHeading extends StatelessWidget {
 }
 
 class _MyPanel extends StatelessWidget {
-  const _MyPanel({required this.child, this.color = _softMint});
+  const _MyPanel({required this.child, this.color = mint});
 
   final Widget child;
   final Color color;
@@ -336,99 +434,112 @@ class _MyPanel extends StatelessWidget {
 }
 
 class _LevelCard extends StatelessWidget {
-  const _LevelCard({required this.nickname, required this.xp});
+  const _LevelCard({
+    required this.nickname,
+    required this.xp,
+    required this.onEdit,
+  });
 
   final String nickname;
   final int xp;
+  final VoidCallback onEdit;
 
   @override
-  Widget build(BuildContext context) => _MyPanel(
-    color: mint,
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 86,
-            height: 86,
-            decoration: const BoxDecoration(
-              color: Color(0xfffaf4e9),
-              shape: BoxShape.circle,
-            ),
-            child: ClipOval(
+  Widget build(BuildContext context) {
+    final level = levelFor(xp);
+    return _MyPanel(
+      color: mint,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: const Color(0xfffbf5e7),
               child: Image.asset(
-                'assets/images/chick_mascot.webp',
+                _homeMascotAsset,
+                width: 72,
+                height: 78,
                 fit: BoxFit.contain,
-                semanticLabel: '하루어휘 병아리',
               ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '나의 레벨',
-                  style: TextStyle(
-                    color: green,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(nickname, style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 3,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    DecoratedBox(
-                      decoration: const BoxDecoration(
-                        color: Color(0xffffe3ba),
-                        borderRadius: BorderRadius.all(Radius.circular(8)),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Wrap(
+                          spacing: 5,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              nickname,
+                              style: _pretendardText(17, weight: 850),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xffffe4bc),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Text(
+                                'Lv.${level.level}',
+                                style: _pretendardText(
+                                  13,
+                                  weight: 850,
+                                  color: _tabSelectedColor,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.only(left: 4),
+                        ),
+                        onPressed: onEdit,
                         child: Text(
-                          'Lv.${levelFor(xp).level}',
-                          style: const TextStyle(
-                            color: _rust,
-                            fontWeight: FontWeight.w800,
+                          '프로필 편집 ›',
+                          style: _pretendardText(
+                            12,
+                            weight: 700,
+                            color: _muted,
                           ),
                         ),
                       ),
-                    ),
-                    Text(
-                      '$xp / ${levelFor(xp).xpForNext} XP',
-                      style: const TextStyle(
-                        color: green,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: levelFor(xp).xpInLevel / xpPerLevel,
-                  minHeight: 8,
-                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                  color: green,
-                  backgroundColor: Color(0xffbce6d6),
-                  semanticsLabel: '경험치, ${levelFor(xp).xpForNext} 중 $xp',
-                ),
-              ],
+                    ],
+                  ),
+                  Text(
+                    '$xp / ${level.xpForNext} XP',
+                    style: _pretendardText(13, weight: 850, color: green),
+                  ),
+                  const SizedBox(height: 5),
+                  LinearProgressIndicator(
+                    value: xp / level.xpForNext,
+                    minHeight: 11,
+                    stopIndicatorRadius: 0,
+                    trackGap: 0,
+                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xff00a32a),
+                    backgroundColor: const Color(0xffcaefd3),
+                    semanticsLabel: '경험치, ${level.xpForNext} 중 $xp',
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _TileRow extends StatelessWidget {
@@ -441,7 +552,11 @@ class _TileRow extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       for (var i = 0; i < tiles.length; i++) ...[
-        if (i > 0) const SizedBox(width: 8),
+        if (i > 0)
+          const SizedBox(
+            height: 70,
+            child: VerticalDivider(width: 12, color: _line),
+          ),
         Expanded(child: tiles[i]),
       ],
     ],
@@ -452,174 +567,33 @@ class _MyTile extends StatelessWidget {
   const _MyTile({
     required this.icon,
     required this.label,
-    this.value,
-    this.background = _softMint,
+    required this.value,
     this.ink = green,
   });
 
   final IconData icon;
   final String label;
-  final String? value;
-  final Color background;
+  final String value;
   final Color ink;
 
   @override
-  Widget build(BuildContext context) {
-    final badge = value == null;
-    return _MyPanel(
-      color: badge ? Colors.white : _softMint,
-      child: SizedBox(
-        width: double.infinity,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
-          child: Column(
-            children: [
-              Container(
-                width: badge ? 42 : 30,
-                height: badge ? 42 : 30,
-                decoration: BoxDecoration(
-                  color: badge ? background : (ink == green ? mint : _warm),
-                  shape: BoxShape.circle,
-                  border: badge
-                      ? Border.all(color: ink.withValues(alpha: .24), width: 2)
-                      : null,
-                ),
-                child: Icon(icon, color: ink, size: badge ? 23 : 17),
-              ),
-              const SizedBox(height: 4),
-              if (value case final number?)
-                Text(
-                  number,
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: _muted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Column(
+      children: [
+        Icon(icon, color: ink, size: 26),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
         ),
-      ),
-    );
-  }
-}
-
-class _ReviewCard extends StatelessWidget {
-  const _ReviewCard({
-    required this.title,
-    required this.description,
-    required this.count,
-    required this.saved,
-    required this.onOpen,
-    required this.onReview,
-  });
-
-  final String title;
-  final String description;
-  final int count;
-  final bool saved;
-  final VoidCallback onOpen;
-  final VoidCallback? onReview;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = saved ? green : _rust;
-    return _MyPanel(
-      child: Column(
-        children: [
-          InkWell(
-            onTap: onOpen,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 12, 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: saved ? mint : orange,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      saved ? Icons.favorite_rounded : Icons.fact_check_rounded,
-                      color: ink,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          description,
-                          style: const TextStyle(fontSize: 12, color: _muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '$count개',
-                    style: TextStyle(color: ink, fontWeight: FontWeight.w800),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: ink),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: onOpen,
-                    child: const Text('단어 보기'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: saved ? green : _rust,
-                      disabledBackgroundColor: saved ? mint : _warm,
-                      disabledForegroundColor: ink,
-                      minimumSize: const Size.fromHeight(44),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                    ),
-                    onPressed: onReview,
-                    child: Text(
-                      saved ? '복습하기' : '다시 풀기',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 12, color: _muted),
+        ),
+      ],
+    ),
+  );
 }
 
 class _WordCollection extends StatelessWidget {
@@ -688,17 +662,78 @@ class _SettingLink extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.detail,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final String? detail;
 
   @override
   Widget build(BuildContext context) => ListTile(
-    leading: Icon(icon, color: green, size: 20),
-    title: Text(label),
-    trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+    dense: true,
+    visualDensity: VisualDensity.compact,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 5),
+    leading: switch (icon) {
+      Icons.assignment_outlined => const _ReviewGlyph(
+        Icons.assignment_rounded,
+        _tabSelectedColor,
+        _warm,
+      ),
+      Icons.favorite_rounded => const _ReviewGlyph(
+        Icons.favorite_rounded,
+        green,
+        mint,
+      ),
+      Icons.notifications_none_rounded => const _FrameIcon(
+        _FrameSymbol.bell,
+        color: _tabUnselectedColor,
+      ),
+      Icons.person_outline_rounded => const _FrameIcon(
+        _FrameSymbol.person,
+        color: _tabUnselectedColor,
+      ),
+      _ => Icon(icon, size: 24, color: _tabUnselectedColor),
+    },
+    title: Text(label, style: _pretendardText(17, weight: 820)),
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (detail != null)
+          Text(
+            detail!,
+            style: TextStyle(
+              color:
+                  icon == Icons.assignment_outlined ||
+                      icon == Icons.favorite_rounded
+                  ? _tabSelectedColor
+                  : _muted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        const Icon(Icons.chevron_right_rounded, size: 20),
+      ],
+    ),
     onTap: onTap,
+  );
+}
+
+class _ReviewGlyph extends StatelessWidget {
+  const _ReviewGlyph(this.icon, this.color, this.background);
+
+  final IconData icon;
+  final Color color;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 35,
+    height: 35,
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Icon(icon, size: 23, color: color),
   );
 }
