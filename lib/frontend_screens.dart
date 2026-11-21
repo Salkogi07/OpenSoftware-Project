@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'learning/learning_repository.dart';
 import 'learning/learning_stats.dart';
+import 'record_screen.dart' as record;
 
 part 'home_page.dart';
 part 'my_page.dart';
@@ -248,7 +249,7 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             for (var tabIndex = 0; tabIndex < 4; tabIndex++)
               if (tabIndex == 2)
-                const RecordScreen()
+                const _RecordTab()
               else
                 _tabNavigator(
                   tabIndex,
@@ -317,9 +318,9 @@ class _MainScreenState extends State<MainScreen> {
       );
 }
 
-// 기록 탭: 최근 7일 학습량·정답률·자주 틀린 단어 TOP 3 (learning_stats.dart의 weeklyStats)
-class RecordScreen extends StatelessWidget {
-  const RecordScreen({super.key});
+// 기록 탭: 시안 화면(record_screen.dart)에 최근 7일 실제 통계(learning_stats.dart)를 채워서 보여 줌
+class _RecordTab extends StatelessWidget {
+  const _RecordTab();
 
   static const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -327,139 +328,34 @@ class RecordScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final library = _LibraryScope.watch(context);
     final weekly = library?.weekly ?? weeklyStats(const [], DateTime.now());
-    final total = weekly.dailyCounts.fold<int>(0, (sum, n) => sum + n);
-    final maxCount = weekly.dailyCounts.fold<int>(1, math.max);
     final today = koreanDate(DateTime.now());
-    final text = Theme.of(context).textTheme;
-    final status = library == null ? null : _loadStatus(library);
+    final accuracy = weekly.accuracy;
 
-    return Scaffold(
+    return record.RecordScreen(
       appBar: _tabAppBar('기록 탭'),
-      body: ScreenBody(
-        children: [
-          if (status != null) ...[
-            Text(status, style: const TextStyle(color: _muted)),
-            const SizedBox(height: 12),
-          ],
-          _RecordCard(
-            icon: Icons.bar_chart_rounded,
-            title: '이번 주 학습량',
-            detail: total == 0
-                ? '최근 7일 동안 푼 문제가 없어요. 학습 탭에서 시작해 보세요.'
-                : '최근 7일 동안 $total문제를 풀었어요.',
-            child: SizedBox(
-              height: 130,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (var i = 0; i < 7; i++)
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${weekly.dailyCounts[i]}',
-                            style: text.labelLarge,
-                          ),
-                          const SizedBox(height: 4),
-                          // 숫자·요일 글자를 놓고 남은 높이 안에서 막대가 비율대로 차서 넘치지 않음
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: FractionallySizedBox(
-                                heightFactor: math.max(
-                                  0.04,
-                                  weekly.dailyCounts[i] / maxCount,
-                                ),
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: i == 6
-                                        ? green
-                                        : const Color(0xffbce6d6),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            _weekdays[today
-                                    .subtract(Duration(days: 6 - i))
-                                    .weekday -
-                                1],
-                            style: const TextStyle(color: _muted),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
+      status: library == null ? null : _loadStatus(library),
+      accuracyPercent: accuracy == null ? null : (accuracy * 100).round(),
+      weeklyRecords: [
+        for (var i = 0; i < 7; i++)
+          record.DailyRecord(
+            day: _weekdays[today.subtract(Duration(days: 6 - i)).weekday - 1],
+            solvedCount: weekly.dailyCounts[i],
+            accuracy: weekly.dailyAccuracyPercent(i),
           ),
-          const SizedBox(height: 12),
-          _RecordCard(
-            icon: Icons.track_changes_rounded,
-            title: '이번 주 정답률',
-            detail: weekly.accuracy == null
-                ? '아직 기록이 없어요.'
-                : '${_percent(weekly.accuracy)} · 정답 1문제당 3 XP',
+      ],
+      topWrongWords: [
+        for (final word in library?.topWrongWords ?? const <Word>[])
+          record.WrongWordRank(
+            word: word.name,
+            topic: word.topic,
+            meaning: word.meaning,
+            // 문제 번호로 짝을 찾아서, 문제 하나를 못 불러와도 횟수가 어긋나지 않게
+            wrongCount: weekly
+                .topWrongCounts[weekly.topWrongQuestionIds.indexOf(word.id!)],
           ),
-          const SizedBox(height: 12),
-          _RecordCard(
-            icon: Icons.error_outline_rounded,
-            title: '자주 틀리는 단어 TOP 3',
-            detail: library == null || library.topWrongWords.isEmpty
-                ? '이번 주에 틀린 단어가 없어요.'
-                : [
-                    for (final (i, word) in library.topWrongWords.indexed)
-                      '${i + 1}. ${word.name} · ${word.meaning}',
-                  ].join('\n'),
-          ),
-        ],
-      ),
+      ],
     );
   }
-}
-
-class _RecordCard extends StatelessWidget {
-  const _RecordCard({
-    required this.icon,
-    required this.title,
-    required this.detail,
-    this.child,
-  });
-
-  final IconData icon;
-  final String title;
-  final String detail;
-  final Widget? child;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(color: mint, borderRadius: cardRadius),
-    child: Padding(
-      padding: cardPadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: green),
-              const SizedBox(width: 10),
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(detail),
-          if (child case final child?) ...[const SizedBox(height: 16), child],
-        ],
-      ),
-    ),
-  );
 }
 
 class StudyScreen extends StatelessWidget {
