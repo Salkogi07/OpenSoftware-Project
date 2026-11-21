@@ -92,6 +92,11 @@ void main() {
       expect(stats.dailyCounts, [1, 0, 0, 1, 1, 2, 2]);
       expect(stats.accuracy, closeTo(2 / 7, 1e-9));
       expect(stats.topWrongQuestionIds, ['A', 'D', 'B']);
+      expect(stats.topWrongCounts, [2, 1, 1]);
+      expect(stats.dailyCorrect, [1, 0, 0, 0, 0, 1, 0]);
+      expect(stats.dailyAccuracyPercent(5), 50); // 어제: 2문제 중 1문제
+      expect(stats.dailyAccuracyPercent(6), 0); // 오늘: 2문제 모두 틀림
+      expect(stats.dailyAccuracyPercent(1), isNull); // 푼 문제 없음
     });
     test('기록이 없으면 정답률 null', () {
       final stats = weeklyStats([], now);

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+// 기록 탭 화면 (디자인: DOBK23 시안). 데이터는 밖에서 받아서 그리기만 합니다.
+// 실제 데이터는 frontend_screens.dart의 기록 탭이 learning_stats.dart의 주간 통계로 채워 줍니다.
+
 class DailyRecord {
   final String day;
   final int solvedCount; // 학습 문제 수
-  final int accuracy; // 정답률 (0~100)
+  final int? accuracy; // 정답률 (0~100). 푼 문제가 없는 날은 null
 
   const DailyRecord({
     required this.day,
@@ -27,7 +30,29 @@ class WrongWordRank {
 }
 
 class RecordScreen extends StatefulWidget {
-  const RecordScreen({super.key});
+  const RecordScreen({
+    super.key,
+    required this.weeklyRecords,
+    required this.topWrongWords,
+    required this.accuracyPercent,
+    this.status,
+    this.appBar,
+  });
+
+  /// 최근 7일 기록 (오래된 날 → 오늘 순서)
+  final List<DailyRecord> weeklyRecords;
+
+  /// 최근 7일 자주 틀린 단어 (최대 3개)
+  final List<WrongWordRank> topWrongWords;
+
+  /// 이번 주 정답률(0~100). 푼 문제가 없으면 null
+  final int? accuracyPercent;
+
+  /// 불러오는 중·실패·로그인 안 함 안내 (없으면 표시 안 함)
+  final String? status;
+
+  /// 다른 탭과 같은 상단바를 쓰려고 밖에서 받음 (없으면 기본 상단바)
+  final PreferredSizeWidget? appBar;
 
   @override
   State<RecordScreen> createState() => _RecordScreenState();
@@ -37,65 +62,42 @@ class _RecordScreenState extends State<RecordScreen> {
   // 'volume'(주간 학습량) 또는 'accuracy'(주간 정답률)
   String _chartMode = 'volume';
 
-  final List<DailyRecord> _weeklyRecords = const [
-    DailyRecord(day: '월', solvedCount: 5, accuracy: 80),
-    DailyRecord(day: '화', solvedCount: 10, accuracy: 90),
-    DailyRecord(day: '수', solvedCount: 5, accuracy: 60),
-    DailyRecord(day: '목', solvedCount: 15, accuracy: 87),
-    DailyRecord(day: '금', solvedCount: 10, accuracy: 100),
-    DailyRecord(day: '토', solvedCount: 5, accuracy: 80),
-    DailyRecord(day: '일', solvedCount: 10, accuracy: 90),
-  ];
-
-  final List<WrongWordRank> _topWrongWords = const [
-    WrongWordRank(
-      word: '심심한 사과',
-      topic: '원래 알던 단어에서 뻗어 나온 말',
-      meaning: '마음에서 우러나오는 깊은 사과',
-      wrongCount: 4,
-    ),
-    WrongWordRank(
-      word: '게슈탈트 붕괴',
-      topic: '요즘 잘 안 쓰는 말',
-      meaning: '글자나 모양이 갑자기 낯설어지는 현상',
-      wrongCount: 3,
-    ),
-    WrongWordRank(
-      word: '양해',
-      topic: '공식적인 자리에서 쓰는 말',
-      meaning: '사정을 헤아려 너그러이 받아들임',
-      wrongCount: 2,
-    ),
-  ];
+  static const _tabular = [FontFeature.tabularFigures()];
 
   int get _totalSolved =>
-      _weeklyRecords.fold(0, (sum, item) => sum + item.solvedCount);
-
-  int get _avgAccuracy {
-    if (_weeklyRecords.isEmpty) return 0;
-    final total = _weeklyRecords.fold(0, (sum, item) => sum + item.accuracy);
-    return (total / _weeklyRecords.length).round();
-  }
+      widget.weeklyRecords.fold(0, (sum, item) => sum + item.solvedCount);
 
   @override
   Widget build(BuildContext context) {
-    final maxVolume = _weeklyRecords
-        .map((e) => e.solvedCount)
-        .reduce((a, b) => a > b ? a : b);
+    final records = widget.weeklyRecords;
+    final maxVolume = records.fold(
+      1,
+      (m, e) => e.solvedCount > m ? e.solvedCount : m,
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('기록'),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-      ),
+      appBar:
+          widget.appBar ??
+          AppBar(
+            title: const Text('기록'),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+          ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (widget.status case final status?) ...[
+              Text(
+                status,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF516477)),
+              ),
+              const SizedBox(height: 12),
+            ],
+
             // 상단 요약 카드
             Container(
               width: double.infinity,
@@ -107,18 +109,17 @@ class _RecordScreenState extends State<RecordScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _SummaryStat(
-                    label: '이번 주 풀이',
-                    value: '$_totalSolved문제',
-                  ),
+                  _SummaryStat(label: '이번 주 풀이', value: '$_totalSolved문제'),
                   Container(
                     width: 1,
                     height: 36,
                     color: Colors.green.withValues(alpha: 0.25),
                   ),
                   _SummaryStat(
-                    label: '평균 정답률',
-                    value: '$_avgAccuracy%',
+                    label: '이번 주 정답률',
+                    value: widget.accuracyPercent == null
+                        ? '-'
+                        : '${widget.accuracyPercent}%',
                   ),
                 ],
               ),
@@ -164,14 +165,17 @@ class _RecordScreenState extends State<RecordScreen> {
                 height: 190,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
-                  children: _weeklyRecords.map((record) {
+                  children: records.map((record) {
                     final isVolume = _chartMode == 'volume';
+                    final accuracy = record.accuracy;
                     final ratio = isVolume
-                        ? (maxVolume == 0 ? 0.0 : record.solvedCount / maxVolume)
-                        : (record.accuracy / 100.0).clamp(0.0, 1.0);
+                        ? record.solvedCount / maxVolume
+                        : ((accuracy ?? 0) / 100.0).clamp(0.0, 1.0);
                     final topLabel = isVolume
                         ? '${record.solvedCount}'
-                        : '${record.accuracy}%';
+                        : (accuracy == null ? '-' : '$accuracy%');
+                    // 푼 문제가 없는 날은 막대를 흐리게
+                    final empty = record.solvedCount == 0;
 
                     return Expanded(
                       child: Column(
@@ -183,15 +187,19 @@ class _RecordScreenState extends State<RecordScreen> {
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF1B5E20),
+                              fontFeatures: _tabular,
                             ),
                           ),
                           const SizedBox(height: 6),
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOutCubic,
                             width: 20,
                             height: (125 * ratio).clamp(6.0, 125.0),
                             decoration: BoxDecoration(
-                              color: isVolume
+                              color: empty
+                                  ? const Color(0xFFDDEFE3)
+                                  : isVolume
                                   ? const Color(0xFF2E7D32)
                                   : const Color(0xFF4CAF50),
                               borderRadius: BorderRadius.circular(6),
@@ -223,8 +231,27 @@ class _RecordScreenState extends State<RecordScreen> {
             ),
             const SizedBox(height: 10),
 
-            ...List.generate(_topWrongWords.length, (index) {
-              final item = _topWrongWords[index];
+            if (widget.topWrongWords.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 20,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Text(
+                  _totalSolved == 0
+                      ? '이번 주에 푼 문제가 없어요. 학습 탭에서 5문제를 풀어 보세요.'
+                      : '이번 주에 틀린 단어가 없어요.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                ),
+              ),
+
+            ...List.generate(widget.topWrongWords.length, (index) {
+              final item = widget.topWrongWords[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 10),
                 elevation: 0,
@@ -257,10 +284,7 @@ class _RecordScreenState extends State<RecordScreen> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        item.meaning,
-                        style: const TextStyle(fontSize: 13),
-                      ),
+                      Text(item.meaning, style: const TextStyle(fontSize: 13)),
                     ],
                   ),
                   trailing: Container(
@@ -278,6 +302,7 @@ class _RecordScreenState extends State<RecordScreen> {
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: Colors.red.shade700,
+                        fontFeatures: _tabular,
                       ),
                     ),
                   ),
@@ -295,10 +320,7 @@ class _SummaryStat extends StatelessWidget {
   final String label;
   final String value;
 
-  const _SummaryStat({
-    required this.label,
-    required this.value,
-  });
+  const _SummaryStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +328,8 @@ class _SummaryStat extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.black54),
+          // 민트 배경 위라 회색 대신 초록 계열로 (대비 확보)
+          style: const TextStyle(fontSize: 12, color: Color(0xFF3B6B50)),
         ),
         const SizedBox(height: 4),
         Text(
@@ -315,6 +338,7 @@ class _SummaryStat extends StatelessWidget {
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Color(0xFF1B5E20),
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
         ),
       ],

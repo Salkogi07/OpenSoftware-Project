@@ -83,24 +83,38 @@ List<String> pickReviewQuestionIds(
 class WeeklyStats {
   const WeeklyStats({
     required this.dailyCounts,
+    required this.dailyCorrect,
     required this.accuracy,
     required this.topWrongQuestionIds,
+    required this.topWrongCounts,
   });
 
   /// 최근 7일 학습량(푼 문제 수). [0]이 6일 전, [6]이 오늘
   final List<int> dailyCounts;
+
+  /// 최근 7일 맞힌 문제 수 (dailyCounts와 같은 순서)
+  final List<int> dailyCorrect;
+
+  /// 그날 정답률(0~100, 반올림). 푼 문제가 없는 날은 null
+  int? dailyAccuracyPercent(int index) => dailyCounts[index] == 0
+      ? null
+      : (dailyCorrect[index] * 100 / dailyCounts[index]).round();
 
   /// 최근 7일 정답률(0~1). 푼 문제가 없으면 null
   final double? accuracy;
 
   /// 최근 7일 자주 틀린 문제 TOP 3 (틀린 횟수 많은 순, 같으면 최근에 틀린 순)
   final List<String> topWrongQuestionIds;
+
+  /// TOP 3 각각의 최근 7일 틀린 횟수 (topWrongQuestionIds와 같은 순서)
+  final List<int> topWrongCounts;
 }
 
 WeeklyStats weeklyStats(List<AttemptRecord> attempts, DateTime now) {
   final today = koreanDate(now);
   final firstDay = today.subtract(const Duration(days: 6));
   final dailyCounts = List<int>.filled(7, 0);
+  final dailyCorrect = List<int>.filled(7, 0);
   var correct = 0;
   var total = 0;
   final wrongCount = <String, int>{};
@@ -113,6 +127,7 @@ WeeklyStats weeklyStats(List<AttemptRecord> attempts, DateTime now) {
     total++;
     if (a.isCorrect) {
       correct++;
+      dailyCorrect[index]++;
     } else {
       wrongCount[a.questionId] = (wrongCount[a.questionId] ?? 0) + 1;
       final prev = lastWrong[a.questionId];
@@ -129,10 +144,13 @@ WeeklyStats weeklyStats(List<AttemptRecord> attempts, DateTime now) {
       return lastWrong[y]!.compareTo(lastWrong[x]!);
     });
 
+  final top3 = top.take(3).toList();
   return WeeklyStats(
     dailyCounts: dailyCounts,
+    dailyCorrect: dailyCorrect,
     accuracy: total == 0 ? null : correct / total,
-    topWrongQuestionIds: top.take(3).toList(),
+    topWrongQuestionIds: top3,
+    topWrongCounts: [for (final id in top3) wrongCount[id]!],
   );
 }
 
