@@ -66,6 +66,13 @@ flutter:
     - assets/images/chick_mascot_transparent.png
     - assets/images/chick_mascot_happy.png
     - assets/images/chick_mascot_sad.png
+    - assets/images/chick_greeting.png
+    - assets/images/chick_reading.png
+    - assets/images/chick_calendar.png
+    - assets/images/chick_review.png
+    - assets/images/chick_topic.png
+    - assets/images/chick_celebrate.png
+    - assets/images/chick_thinking.png
 
   fonts:
     - family: Pretendard
