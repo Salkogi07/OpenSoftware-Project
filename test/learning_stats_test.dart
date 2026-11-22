@@ -128,4 +128,15 @@ void main() {
       expect(levelFor(320), (level: 4, xpInLevel: 20, xpForNext: 400));
     });
   });
+
+  test('오늘의 단어 순번은 한국 날짜가 바뀔 때 다음으로 넘어감', () {
+    // 한국 11월 21일 23:59 과 같은 날 00:00 은 같은 단어
+    final late = DateTime.utc(2026, 11, 21, 14, 59);
+    final early = DateTime.utc(2026, 11, 20, 15, 0);
+    expect(dailyIndex(500, late), dailyIndex(500, early));
+    // 다음 날(한국 11월 22일 00:00)은 다음 단어, 끝에 닿으면 처음으로
+    final next = DateTime.utc(2026, 11, 21, 15, 0);
+    expect(dailyIndex(500, next), (dailyIndex(500, late) + 1) % 500);
+    expect(dailyIndex(1, next), 0);
+  });
 }

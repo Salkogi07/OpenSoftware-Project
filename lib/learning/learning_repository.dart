@@ -131,6 +131,22 @@ class LearningRepository {
     return row?['nickname'] as String?;
   }
 
+  /// 프로필 편집에서 바꾼 닉네임 저장
+  void updateNickname(String nickname) {
+    final client = _client;
+    if (client == null) return;
+    _enqueue(() async {
+      try {
+        await client.from('profiles').upsert({
+          'id': client.auth.currentUser!.id,
+          'nickname': nickname,
+        });
+      } catch (e) {
+        debugPrint('닉네임 저장 실패: $e');
+      }
+    });
+  }
+
   /// 어휘장(틀린 문제) 문제 내용. 최근에 틀린 순. questions.json과 같은 칸으로 돌려줌
   Future<List<Map<String, dynamic>>> fetchWrongQuestionRows() async {
     final client = _client;

@@ -130,6 +130,7 @@ class _StudyLibrary extends ChangeNotifier {
 
   void rename(String name) {
     nickname = name;
+    if (!preview) learningRepository.updateNickname(name);
     notifyListeners();
   }
 }
@@ -523,7 +524,7 @@ class _LevelCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   LinearProgressIndicator(
-                    value: xp / level.xpForNext,
+                    value: level.xpInLevel / xpPerLevel,
                     minHeight: 11,
                     stopIndicatorRadius: 0,
                     trackGap: 0,

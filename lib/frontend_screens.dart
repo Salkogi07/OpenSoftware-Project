@@ -510,12 +510,12 @@ class StudyScreen extends StatelessWidget {
         );
 
     void review() {
-      final saved = library?.saved.values;
-      if (saved != null && saved.isNotEmpty) {
-        _review(context, saved);
+      final mistakes = library?.mistakes.values;
+      if (mistakes != null && mistakes.isNotEmpty) {
+        _review(context, mistakes);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('퀴즈에서 하트를 눌러 단어를 저장해 보세요.')),
+          const SnackBar(content: Text('아직 틀린 단어가 없어요. 학습 중 틀린 단어가 여기에 모여요.')),
         );
       }
     }
@@ -667,13 +667,7 @@ class _TopicScreenState extends State<TopicScreen> {
   late String? topic = widget.initialTopic;
   late String? difficulty = widget.initialDifficulty;
 
-  Future<List<Word>> loadQuestions() async {
-    final source = await rootBundle.loadString('assets/questions.json');
-    final rows = jsonDecode(source) as List<dynamic>;
-    return rows
-        .map((row) => Word.fromJson(row as Map<String, dynamic>))
-        .toList();
-  }
+  Future<List<Word>> loadQuestions() => loadQuestionBank();
 
   List<Word> nextBatch(List<Word> bank, String topic, String difficulty) {
     final key = (topic, difficulty);
@@ -782,6 +776,13 @@ class _TopicScreenState extends State<TopicScreen> {
       ),
     );
   }
+}
+
+/// 900문제 은행(assets/questions.json) 읽기
+Future<List<Word>> loadQuestionBank() async {
+  final source = await rootBundle.loadString('assets/questions.json');
+  final rows = jsonDecode(source) as List<dynamic>;
+  return rows.map((row) => Word.fromJson(row as Map<String, dynamic>)).toList();
 }
 
 class Word {
