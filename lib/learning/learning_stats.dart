@@ -30,6 +30,10 @@ DateTime koreanDate(DateTime time) {
   return DateTime.utc(kst.year, kst.month, kst.day);
 }
 
+/// 날마다 하나씩 바뀌는 순번 (한국 날짜 기준). 오늘의 단어를 고를 때 씀
+int dailyIndex(int length, DateTime now) =>
+    koreanDate(now).difference(DateTime.utc(2026)).inDays % length;
+
 /// 연속 출석일. 오늘 아직 학습 전이어도 어제까지 이어졌으면 그 기록을 보여 줌
 int currentStreak(Iterable<DateTime> attendedDays, DateTime now) {
   final days = attendedDays

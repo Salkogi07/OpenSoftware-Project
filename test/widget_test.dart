@@ -39,7 +39,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('사뿐사뿐'), findsOneWidget);
+    expect(find.text('오늘의 단어'), findsOneWidget);
     final recordsButton = find.text('나의 기록');
     // 버튼이 화면 아래에 있어 아직 그려지지 않았을 수 있으므로 스크롤해서 찾음
     await tester.scrollUntilVisible(
@@ -56,7 +56,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('오늘의 추천 어휘'), findsOneWidget);
-    expect(find.text('사뿐사뿐'), findsNothing);
+    expect(find.text('오늘의 단어'), findsNothing);
 
     await tester.tap(find.text('마이'));
     await tester.pumpAndSettle();

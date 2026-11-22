@@ -4,6 +4,12 @@ const _homeInk = navy;
 const _homeGreen = Color(0xff307c34);
 const _homeMascotAsset = 'assets/images/chick_mascot_transparent.png';
 
+/// 문제 은행에서 날마다 바뀌는 단어 하나 (앱을 켤 때 한 번 읽음)
+final _todayWord = loadQuestionBank().then((bank) {
+  final words = {for (final word in bank) word.name: word}.values.toList();
+  return words[dailyIndex(words.length, DateTime.now())];
+});
+
 TextStyle _pretendardText(
   double size, {
   double weight = 400,
@@ -201,62 +207,84 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 28),
           Text('오늘의 단어', style: _homeText(18, weight: 850)),
           const SizedBox(height: 9),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(69),
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              side: const BorderSide(color: Color(0xffddd8d0)),
-            ),
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (context) => const AlertDialog(
-                title: Text('사뿐사뿐'),
-                content: Text('가볍게 발을 내디디는 모양.\n\n고양이가 복도를 사뿐사뿐 걸었다.'),
-              ),
-            ),
-            child: Row(
-              children: [
-                if (MediaQuery.sizeOf(context).width >= 220) ...[
-                  const SizedBox(
-                    width: 46,
-                    height: 44,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Color(0xffe6f5e9),
-                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                      ),
-                      child: Center(
-                        child: CustomPaint(
-                          size: Size(26, 26),
-                          painter: _HomeWordIcon(speaker: false),
+          FutureBuilder<Word>(
+            future: _todayWord,
+            builder: (context, snapshot) {
+              final word = snapshot.data;
+              final title =
+                  word?.name ??
+                  (snapshot.hasError ? '오늘의 단어를 불러오지 못했어요' : '불러오는 중');
+              return OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(69),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: const BorderSide(color: Color(0xffddd8d0)),
+                ),
+                onPressed: word == null
+                    ? null
+                    : () => showDialog<void>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(word.name),
+                          content: Text(
+                            '${word.meaning}\n\n${word.explanation ?? ''}'
+                                .trim(),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('사뿐사뿐', style: _homeText(20, weight: 850)),
-                      Text(
-                        '가볍게 발을 내디디는 모양',
-                        style: _pretendardText(13, weight: 500, color: _muted),
+                child: Row(
+                  children: [
+                    if (MediaQuery.sizeOf(context).width >= 220) ...[
+                      const SizedBox(
+                        width: 46,
+                        height: 44,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Color(0xffe6f5e9),
+                            borderRadius: BorderRadius.all(Radius.circular(10)),
+                          ),
+                          child: Center(
+                            child: CustomPaint(
+                              size: Size(26, 26),
+                              painter: _HomeWordIcon(speaker: false),
+                            ),
+                          ),
+                        ),
                       ),
+                      const SizedBox(width: 12),
                     ],
-                  ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: _homeText(20, weight: 850)),
+                          if (word != null)
+                            Text(
+                              word.meaning,
+                              style: _pretendardText(
+                                13,
+                                weight: 500,
+                                color: _muted,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (MediaQuery.sizeOf(context).width >= 220)
+                      const CustomPaint(
+                        size: Size(25, 25),
+                        painter: _HomeWordIcon(speaker: true),
+                      ),
+                  ],
                 ),
-                if (MediaQuery.sizeOf(context).width >= 220)
-                  const CustomPaint(
-                    size: Size(25, 25),
-                    painter: _HomeWordIcon(speaker: true),
-                  ),
-              ],
-            ),
+              );
+            },
           ),
           const SizedBox(height: 20),
           _DailyProgress(
