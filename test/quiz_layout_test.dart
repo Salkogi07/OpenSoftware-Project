@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:opensoftware_project/frontend_screens.dart';
 import 'package:opensoftware_project/theme.dart';
 
+const _guidance = '빈칸에 알맞은 표현을 골라보세요.';
+
 void main() {
   testWidgets('미리보기의 모든 주제와 난이도에서 같은 퀴즈 카드를 표시한다', (tester) async {
     tester.view
@@ -41,24 +43,53 @@ void main() {
         expect(word.difficulty, difficulty);
         expect(find.text('1 / 5'), findsOneWidget);
         expect(find.byType(NavigationBar), findsNothing);
-        final guidance = find.text(
-          difficulty == '중' ? '안내: 빈칸에 알맞은 표현을 골라 보세요.' : '뜻: ${word.meaning}',
-        );
+        final guidance = find.text(_guidance);
         expect(guidance, findsOneWidget);
+        expect(find.textContaining('뜻:'), findsNothing);
+        expect(find.textContaining('안내:'), findsNothing);
+        final guidanceText = tester.widget<Text>(guidance);
+        expect(guidanceText.maxLines, 1);
+        expect(guidanceText.softWrap, isFalse);
+        final fittedGuidance = find
+            .ancestor(of: guidance, matching: find.byType(FittedBox))
+            .first;
+        expect(tester.widget<FittedBox>(fittedGuidance).fit, BoxFit.scaleDown);
         final title = find.text('어휘 퀴즈');
-        final titleBox = find
+        final titleContainer = find
             .ancestor(of: title, matching: find.byType(Container))
+            .first;
+        final titleBox = find
+            .descendant(of: titleContainer, matching: find.byType(DecoratedBox))
             .first;
         final guidanceBox = find
             .ancestor(of: guidance, matching: find.byType(Container))
             .first;
-        expect(
-          tester.getTopLeft(titleBox).dx,
-          tester.getTopLeft(guidanceBox).dx,
+        final guidanceBounds = tester.getRect(guidanceBox);
+        final textBounds = tester.getRect(guidance);
+        expect(textBounds.left, greaterThan(guidanceBounds.left));
+        expect(textBounds.right, lessThan(guidanceBounds.right));
+        final promptBox = find.byWidgetPredicate(
+          (widget) =>
+              widget is Container &&
+              widget.constraints?.minHeight == 108 &&
+              widget.decoration is BoxDecoration &&
+              (widget.decoration as BoxDecoration).color == Colors.white,
         );
         expect(
-          tester.getBottomLeft(titleBox).dy,
-          lessThan(tester.getTopLeft(guidanceBox).dy),
+          tester.getTopLeft(titleBox).dx,
+          greaterThan(tester.getTopLeft(guidanceBox).dx),
+        );
+        expect(
+          tester.getSize(titleBox).width,
+          lessThan(tester.getSize(guidanceBox).width),
+        );
+        expect(
+          tester.getTopLeft(guidanceBox).dy - tester.getBottomLeft(titleBox).dy,
+          closeTo(
+            tester.getTopLeft(promptBox).dy -
+                tester.getBottomLeft(guidanceBox).dy,
+            1,
+          ),
         );
         final confirm = find.widgetWithText(FilledButton, '정답 확인하기');
         expect(confirm.hitTestable(), findsOneWidget);
@@ -70,7 +101,7 @@ void main() {
       }
     }
   });
-  testWidgets('문제 은행의 뜻 고르기 문제에서 정답을 노출하지 않는다', (tester) async {
+  testWidgets('문제 은행에서 기존 질문과 공통 안내 문구를 표시한다', (tester) async {
     rootBundle.evict('assets/questions.json');
     final words = (await tester.runAsync(loadQuestionBank))!;
     final examples = <(String, String), Word>{};
@@ -87,14 +118,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text(word.prompt!, findRichText: true), findsOneWidget);
-      expect(
-        find.text('뜻: ${word.meaning}'),
-        word.difficulty == '하' ? findsNothing : findsOneWidget,
-      );
-      expect(
-        find.text('안내: 단어의 뜻을 골라 보세요.'),
-        word.difficulty == '하' ? findsOneWidget : findsNothing,
-      );
+      expect(find.text(_guidance), findsOneWidget);
+      expect(find.textContaining('뜻:'), findsNothing);
+      expect(find.textContaining('안내:'), findsNothing);
     }
   });
 }

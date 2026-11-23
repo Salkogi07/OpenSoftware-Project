@@ -1020,20 +1020,6 @@ class _QuizScreenState extends State<QuizScreen> {
             ? word.example
             : word.example.replaceFirst(word.name, '{빈칸}'));
     final selected = selectedChoice;
-    final isBlankQuestion = word.usesBlank || prompt.contains('{빈칸}');
-    final meaning = word.meaning.trim();
-    // 기존 퀴즈가 이미 뜻을 제시하는 경우에만 뜻을 카드 상단에도 표시한다.
-    final showsMeaningInPrompt =
-        meaning.isNotEmpty &&
-        prompt.contains(meaning) &&
-        !choices.any((choice) => choice.trim() == meaning);
-    final guidance = switch (word.hint) {
-      final hint? when isBlankQuestion => '뜻: $hint',
-      final hint? => '힌트: $hint',
-      null when isBlankQuestion => '안내: 빈칸에 알맞은 표현을 골라 보세요.',
-      null when showsMeaningInPrompt => '뜻: $meaning',
-      null => '안내: 단어의 뜻을 골라 보세요.',
-    };
     final compact = MediaQuery.sizeOf(context).height < 800;
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1097,12 +1083,7 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          _QuizPromptCard(
-            prompt: prompt,
-            hint: word.hint,
-            guidance: guidance,
-            compact: compact,
-          ),
+          _QuizPromptCard(prompt: prompt, hint: word.hint, compact: compact),
           const SizedBox(height: 12),
           for (final (index, choice) in choices.indexed)
             Padding(
@@ -1127,17 +1108,17 @@ class _QuizScreenState extends State<QuizScreen> {
 const _quizMascotAsset = 'assets/images/chick_thinking.png';
 const _quizGreen = Color(0xff099604);
 const _quizTrack = Color(0xffdff3e4);
+const _quizCardBoxGap = 16.0;
+const _quizGuidance = '빈칸에 알맞은 표현을 골라보세요.';
 
 class _QuizPromptCard extends StatelessWidget {
   const _QuizPromptCard({
     required this.prompt,
-    required this.guidance,
     required this.compact,
     this.hint,
   });
 
   final String prompt;
-  final String guidance;
   final bool compact;
   final String? hint;
 
@@ -1163,13 +1144,14 @@ class _QuizPromptCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Image.asset(
                 _quizMascotAsset,
                 width: 78,
                 height: compact ? 78 : 94,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1179,6 +1161,7 @@ class _QuizPromptCard extends StatelessWidget {
                         horizontal: 10,
                         vertical: 5,
                       ),
+                      margin: const EdgeInsets.only(left: 18, top: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xffcfeeda),
                         borderRadius: BorderRadius.circular(20),
@@ -1201,7 +1184,7 @@ class _QuizPromptCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: _quizCardBoxGap),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -1212,12 +1195,18 @@ class _QuizPromptCard extends StatelessWidget {
                         color: const Color(0xff3f8b68),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        guidance,
-                        style: _pretendardText(
-                          16,
-                          weight: 750,
-                          color: Colors.white,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _quizGuidance,
+                          maxLines: 1,
+                          softWrap: false,
+                          textAlign: TextAlign.center,
+                          style: _pretendardText(
+                            16,
+                            weight: 750,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -1226,7 +1215,7 @@ class _QuizPromptCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: _quizCardBoxGap),
           Container(
             constraints: const BoxConstraints(minHeight: 108),
             alignment: Alignment.center,
