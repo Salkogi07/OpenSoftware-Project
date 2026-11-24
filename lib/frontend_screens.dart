@@ -1109,7 +1109,8 @@ const _quizMascotAsset = 'assets/images/chick_thinking.png';
 const _quizGreen = Color(0xff099604);
 const _quizTrack = Color(0xffdff3e4);
 const _quizCardBoxGap = 16.0;
-const _quizGuidance = '빈칸에 알맞은 표현을 골라보세요.';
+const _quizBlankGuidance = '빈칸에 알맞은 표현을 골라보세요.';
+const _quizChoiceGuidance = '가장 알맞은 답을 골라보세요.';
 
 class _QuizPromptCard extends StatelessWidget {
   const _QuizPromptCard({
@@ -1129,6 +1130,10 @@ class _QuizPromptCard extends StatelessWidget {
         ? prompt.substring(0, prompt.length - hintSuffix.length)
         : prompt;
     final parts = sentence.split('{빈칸}');
+    // 문제 은행(assets/questions.json)은 빈칸 없는 뜻 고르기 문제라 안내도 문제 형식에 맞춤
+    final guidance = parts.length > 1
+        ? _quizBlankGuidance
+        : _quizChoiceGuidance;
     return Container(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -1198,7 +1203,7 @@ class _QuizPromptCard extends StatelessWidget {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          _quizGuidance,
+                          guidance,
                           maxLines: 1,
                           softWrap: false,
                           textAlign: TextAlign.center,
@@ -1262,6 +1267,15 @@ class _QuizPromptCard extends StatelessWidget {
               style: _pretendardText(26, weight: 850).copyWith(height: 1.45),
             ),
           ),
+          if (hint case final value?)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                '힌트 · $value',
+                textAlign: TextAlign.center,
+                style: _pretendardText(14, weight: 700, color: _muted),
+              ),
+            ),
         ],
       ),
     );

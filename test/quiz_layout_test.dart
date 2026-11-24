@@ -5,7 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:opensoftware_project/frontend_screens.dart';
 import 'package:opensoftware_project/theme.dart';
 
-const _guidance = '빈칸에 알맞은 표현을 골라보세요.';
+const _blankGuidance = '빈칸에 알맞은 표현을 골라보세요.';
+const _choiceGuidance = '가장 알맞은 답을 골라보세요.';
 
 void main() {
   testWidgets('미리보기의 모든 주제와 난이도에서 같은 퀴즈 카드를 표시한다', (tester) async {
@@ -43,8 +44,15 @@ void main() {
         expect(word.difficulty, difficulty);
         expect(find.text('1 / 5'), findsOneWidget);
         expect(find.byType(NavigationBar), findsNothing);
-        final guidance = find.text(_guidance);
+        // 하·중은 빈칸 문장, 상은 뜻풀이 문제
+        final guidance = find.text(
+          difficulty == '상' ? _choiceGuidance : _blankGuidance,
+        );
         expect(guidance, findsOneWidget);
+        expect(
+          find.text('힌트 · ${word.meaning}'),
+          difficulty == '하' ? findsOneWidget : findsNothing,
+        );
         expect(find.textContaining('뜻:'), findsNothing);
         expect(find.textContaining('안내:'), findsNothing);
         final guidanceText = tester.widget<Text>(guidance);
@@ -101,7 +109,7 @@ void main() {
       }
     }
   });
-  testWidgets('문제 은행에서 기존 질문과 공통 안내 문구를 표시한다', (tester) async {
+  testWidgets('문제 은행에서 기존 질문과 뜻 고르기 안내 문구를 표시한다', (tester) async {
     rootBundle.evict('assets/questions.json');
     final words = (await tester.runAsync(loadQuestionBank))!;
     final examples = <(String, String), Word>{};
@@ -118,7 +126,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text(word.prompt!, findRichText: true), findsOneWidget);
-      expect(find.text(_guidance), findsOneWidget);
+      expect(find.text(_choiceGuidance), findsOneWidget);
+      expect(find.text(_blankGuidance), findsNothing);
       expect(find.textContaining('뜻:'), findsNothing);
       expect(find.textContaining('안내:'), findsNothing);
     }
