@@ -388,11 +388,7 @@ String? _loadStatus(_StudyLibrary library) {
 
 void _review(BuildContext context, Iterable<Word> words) {
   final batch = words.toList(growable: false);
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => QuizScreen(words: batch, isReview: true),
-    ),
-  );
+  openQuiz(context, batch, isReview: true);
 }
 
 class _MyHeading extends StatelessWidget {
