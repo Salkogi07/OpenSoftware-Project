@@ -145,8 +145,40 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(account);
     await tester.pumpAndSettle();
-    expect(find.text('내 계정'), findsOneWidget);
-    expect(find.text('닉네임 변경'), findsNothing);
+    expect(find.text('로그인 정보'), findsOneWidget);
+    expect(find.text('닉네임'), findsNothing); // 닉네임은 프로필 설정으로 옮김
+    // 회원 탈퇴는 안내를 확인해야 버튼이 켜짐
+    await tester.tap(find.text('회원 탈퇴'));
+    await tester.pumpAndSettle();
+    final leave = find.widgetWithText(FilledButton, '탈퇴하기');
+    expect(tester.widget<FilledButton>(leave).onPressed, isNull);
+    await tester.tap(find.text('위 내용을 확인했어요'));
+    await tester.pump();
+    expect(tester.widget<FilledButton>(leave).onPressed, isNotNull);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    // 프로필 설정: 사진·닉네임·배지
+    await tester.scrollUntilVisible(find.text('프로필 설정 ›'), -180);
+    await tester.tap(find.text('프로필 설정 ›'));
+    await tester.pumpAndSettle();
+    expect(find.text('닉네임'), findsOneWidget);
+    expect(find.text('일주일 완주'), findsOneWidget); // 미리보기는 7일 연속이라 획득
+    await tester.tap(find.byTooltip('프로필 사진 바꾸기'));
+    await tester.pumpAndSettle();
+    expect(find.text('갤러리에서 사진 선택'), findsOneWidget);
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(BottomSheet),
+            matching: find.byType(InkWell),
+          )
+          .at(1),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('갤러리에서 사진 선택'), findsNothing);
     await tester.pageBack();
     await tester.pumpAndSettle();
 

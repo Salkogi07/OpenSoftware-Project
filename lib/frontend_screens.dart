@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io' show File;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'auth_service.dart';
 import 'learning/learning_repository.dart';
@@ -16,6 +18,7 @@ part 'my_page.dart';
 part 'study_preview.dart';
 part 'frame_icons.dart';
 part 'account_pages.dart';
+part 'profile_pages.dart';
 
 void main() => runApp(const VocabularyApp());
 

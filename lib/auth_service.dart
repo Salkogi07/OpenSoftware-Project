@@ -100,6 +100,11 @@ class AuthService {
     await _supabase.auth.signOut();
   }
 
+  /// 로그인된 모든 기기에서 로그아웃
+  Future<void> signOutEverywhere() async {
+    await _supabase.auth.signOut(scope: SignOutScope.global);
+  }
+
   /// 로그인한 상태에서 비밀번호 바꾸기
   Future<void> changePassword(String newPassword) async {
     await _supabase.auth.updateUser(UserAttributes(password: newPassword));
