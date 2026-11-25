@@ -233,6 +233,7 @@ class ScreenBody extends StatelessWidget {
     this.footerPadding,
     this.controller,
     this.contentPadding,
+    this.scrollFooter = false,
   });
 
   final List<Widget> children;
@@ -240,43 +241,65 @@ class ScreenBody extends StatelessWidget {
   final EdgeInsetsGeometry? footerPadding;
   final ScrollController? controller;
   final EdgeInsetsGeometry? contentPadding;
+  final bool scrollFooter;
 
   @override
   Widget build(BuildContext context) {
+    final bodyPadding =
+        contentPadding ??
+        EdgeInsets.fromLTRB(
+          _phoneSpacing(context, 15),
+          _phoneSpacing(context, 12),
+          _phoneSpacing(context, 15),
+          24,
+        );
+    final footerWidget = footer;
+    final paddedFooter = footerWidget == null
+        ? null
+        : Padding(
+            padding:
+                footerPadding ??
+                EdgeInsets.fromLTRB(
+                  _phoneSpacing(context, 15),
+                  12,
+                  _phoneSpacing(context, 15),
+                  _phoneSpacing(context, 46),
+                ),
+            child: footerWidget,
+          );
     return SafeArea(
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
+          child: scrollFooter && paddedFooter != null
+              ? CustomScrollView(
                   controller: controller,
-                  padding:
-                      contentPadding ??
-                      EdgeInsets.fromLTRB(
-                        _phoneSpacing(context, 15),
-                        _phoneSpacing(context, 12),
-                        _phoneSpacing(context, 15),
-                        24,
+                  slivers: [
+                    SliverPadding(
+                      padding: bodyPadding,
+                      sliver: SliverList.list(children: children),
+                    ),
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: paddedFooter,
                       ),
-                  children: children,
-                ),
-              ),
-              if (footer != null)
-                Padding(
-                  padding:
-                      footerPadding ??
-                      EdgeInsets.fromLTRB(
-                        _phoneSpacing(context, 15),
-                        12,
-                        _phoneSpacing(context, 15),
-                        _phoneSpacing(context, 46),
+                    ),
+                  ],
+                )
+              : Column(
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        controller: controller,
+                        padding: bodyPadding,
+                        children: children,
                       ),
-                  child: footer,
+                    ),
+                    if (paddedFooter != null) paddedFooter,
+                  ],
                 ),
-            ],
-          ),
         ),
       ),
     );
@@ -1374,11 +1397,26 @@ class _CompletionScreenState extends State<CompletionScreen> {
     ];
     final reviewWords = missedWords.isEmpty ? words : missedWords;
     final text = Theme.of(context).textTheme;
+    const horizontalPadding = 20.0;
+    const buttonGap = SizedBox(height: 5);
     return Scaffold(
       appBar: AppBar(title: Text(isReview ? '복습 완료' : '학습 완료')),
       body: ScreenBody(
-        contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+        contentPadding: const EdgeInsets.fromLTRB(
+          horizontalPadding,
+          8,
+          horizontalPadding,
+          8,
+        ),
+        footerPadding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          12,
+          horizontalPadding,
+          _phoneSpacing(context, 46),
+        ),
+        scrollFooter: true,
         footer: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             OutlinedButton.icon(
@@ -1395,7 +1433,8 @@ class _CompletionScreenState extends State<CompletionScreen> {
                   ? null
                   : () => startQuiz(reviewWords, isReview: true),
             ),
-            if (widget.nextBatch case final nextBatch?)
+            if (widget.nextBatch case final nextBatch?) ...[
+              buttonGap,
               FilledButton(
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(44),
@@ -1410,6 +1449,8 @@ class _CompletionScreenState extends State<CompletionScreen> {
                   textAlign: TextAlign.center,
                 ),
               ),
+              buttonGap,
+            ],
             OutlinedButton(
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(44),
