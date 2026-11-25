@@ -139,11 +139,25 @@ void main() {
     expect(find.text('7 / 13'), findsOneWidget);
     await tester.tap(find.text('마이'));
     await tester.pumpAndSettle();
-    final signOut = find.text('미리보기 로그아웃');
+    // 계정 관리는 닉네임 대화상자가 아니라 계정 관리 화면을 연다
+    final account = find.text('계정 관리');
+    await tester.scrollUntilVisible(account, 180);
+    await tester.pumpAndSettle();
+    await tester.tap(account);
+    await tester.pumpAndSettle();
+    expect(find.text('내 계정'), findsOneWidget);
+    expect(find.text('닉네임 변경'), findsNothing);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    final signOut = find.text('로그아웃');
     await tester.scrollUntilVisible(signOut, 180);
     await tester.ensureVisible(signOut);
     await tester.pumpAndSettle();
     await tester.tap(signOut);
+    await tester.pumpAndSettle();
+    expect(find.text('로그아웃할까요?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '로그아웃'));
     await tester.pumpAndSettle();
     expect(find.text('로그인이 필요해요'), findsOneWidget);
 

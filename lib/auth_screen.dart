@@ -21,6 +21,13 @@ class _AuthScreenState extends State<AuthScreen> {
   // 비밀번호 숨김/표시 토글
   bool _obscurePassword = true;
 
+  // 로그인·회원가입 실패 안내 (입력을 고치면 지움)
+  String? _errorText;
+
+  void _clearError(String _) {
+    if (_errorText != null) setState(() => _errorText = null);
+  }
+
   // 입력값 검증을 위한 Form 키
   final _formKey = GlobalKey<FormState>();
 
@@ -45,6 +52,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     setState(() {
       _isLoading = true;
+      _errorText = null;
     });
 
     try {
@@ -86,10 +94,8 @@ class _AuthScreenState extends State<AuthScreen> {
       });
     }
     } catch (e) {
-      // 오류 처리
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('오류 발생: $e')),
-      );
+      // 오류 내용을 한국어 문구로 바꿔 입력칸 아래에 보여 줌
+      if (mounted) setState(() => _errorText = authErrorMessage(e));
     } finally {
       if (mounted) {
         setState(() {
@@ -167,6 +173,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    onChanged: _clearError,
                     decoration: InputDecoration(
                       labelText: '이메일',
                       hintText: 'example@university.ac.kr',
@@ -191,6 +198,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    onChanged: _clearError,
                     decoration: InputDecoration(
                       labelText: '비밀번호',
                       hintText: '6자 이상 입력하세요',
@@ -218,6 +226,17 @@ class _AuthScreenState extends State<AuthScreen> {
                       return null;
                     },
                   ),
+                  if (_errorText case final message?)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        message,
+                        style: TextStyle(
+                          color: theme.colorScheme.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 28),
 
                   // 5. 로그인 / 회원가입 실행 버튼 (theme.dart의 ElevatedButton 스타일 자동 적용)
@@ -257,6 +276,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         onPressed: () {
                           setState(() {
                             _isLogin = !_isLogin;
+                            _errorText = null;
                             _formKey.currentState?.reset();
                           });
                         },

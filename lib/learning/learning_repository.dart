@@ -19,6 +19,9 @@ class LearningRepository {
   /// 로그인해서 수파베이스에 저장·불러오기가 가능한지
   bool get isLoggedIn => _client != null;
 
+  /// 로그인한 사용자의 이메일
+  String? get email => _client?.auth.currentUser?.email;
+
   /// 로그인한 사용자의 클라이언트. 키가 없어 수파베이스를 안 켰거나(화면 작업·테스트) 로그아웃 상태면 null
   SupabaseClient? get _client {
     try {

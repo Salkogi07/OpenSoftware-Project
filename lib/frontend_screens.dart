@@ -13,6 +13,7 @@ part 'home_page.dart';
 part 'my_page.dart';
 part 'study_preview.dart';
 part 'frame_icons.dart';
+part 'account_pages.dart';
 
 void main() => runApp(const VocabularyApp());
 
@@ -172,9 +173,19 @@ final frontendTheme = ThemeData(
       fontWeight: FontWeight.w800,
       height: 1.25,
     ),
-    bodyLarge: TextStyle(fontSize: 16, height: 1.5),
-    bodyMedium: TextStyle(fontSize: 15, height: 1.5),
-    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+    // 본문도 Medium(500)으로: Regular(400)는 휴대폰 화면에서 얇아 보임
+    bodyLarge: TextStyle(
+      fontSize: 16,
+      height: 1.5,
+      fontWeight: FontWeight.w500,
+    ),
+    bodyMedium: TextStyle(
+      fontSize: 15,
+      height: 1.5,
+      fontWeight: FontWeight.w500,
+    ),
+    bodySmall: TextStyle(fontWeight: FontWeight.w500),
+    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
   ).apply(bodyColor: navy, displayColor: navy),
   appBarTheme: const AppBarTheme(
     backgroundColor: Colors.white,
@@ -307,9 +318,12 @@ class ScreenBody extends StatelessWidget {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key, this.preview = false});
+  const MainScreen({super.key, this.preview = false, this.onSignOut});
 
   final bool preview;
+
+  /// 마이 탭의 로그아웃. 로그인 화면으로 돌아가는 일은 앱 진입 쪽(MainNavigationScreen)이 맡음
+  final Future<void> Function()? onSignOut;
 
   static void goHome(BuildContext context) {
     context.findAncestorStateOfType<_MainScreenState>()!.goHome();
@@ -321,7 +335,10 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int selectedTab = 0;
-  late final library = _StudyLibrary(preview: widget.preview);
+  late final library = _StudyLibrary(
+    preview: widget.preview,
+    onSignOut: widget.onSignOut,
+  );
   final navigatorKeys = [
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
