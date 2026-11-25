@@ -345,8 +345,37 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen>
+    with SingleTickerProviderStateMixin {
   int selectedTab = 0;
+
+  /// 기록 탭에 들어온 횟수: 바뀔 때마다 기록 화면을 새로 만들어 막대가 다시 차오름
+  int recordVisits = 0;
+
+  /// 탭 전환 때 새 탭이 살짝 떠오르며 나타나는 짧은 연출 (투명도·위치만 바꿔 가벼움)
+  late final tabSwitch = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+    value: 1,
+  );
+  late final tabFade = CurvedAnimation(
+    parent: tabSwitch,
+    curve: Curves.easeOutCubic,
+  );
+  late final tabSlide = Tween(
+    begin: const Offset(0, 0.015),
+    end: Offset.zero,
+  ).animate(tabFade);
+
+  void _selectTab(int index) {
+    if (index == selectedTab) return;
+    setState(() {
+      selectedTab = index;
+      if (index == 2) recordVisits++;
+    });
+    if (!MediaQuery.disableAnimationsOf(context)) tabSwitch.forward(from: 0);
+  }
+
   late final library = _StudyLibrary(
     preview: widget.preview,
     onSignOut: widget.onSignOut,
@@ -373,6 +402,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
+    tabSwitch.dispose();
     library.dispose();
     super.dispose();
   }
@@ -381,7 +411,7 @@ class _MainScreenState extends State<MainScreen> {
     for (final key in navigatorKeys) {
       key.currentState?.popUntil((route) => route.isFirst);
     }
-    setState(() => selectedTab = 0);
+    _selectTab(0);
     library.refresh(); // 퀴즈를 마치고 돌아오면 방금 푼 결과를 반영
   }
 
@@ -397,18 +427,24 @@ class _MainScreenState extends State<MainScreen> {
               maxWidth: widget.preview && kIsWeb ? 390 : double.infinity,
             ),
             child: Scaffold(
-              body: IndexedStack(
-                index: selectedTab,
-                children: [
-                  for (var tabIndex = 0; tabIndex < 4; tabIndex++)
-                    if (tabIndex == 2)
-                      const _RecordTab()
-                    else
-                      _tabNavigator(
-                        tabIndex,
-                        navigatorKeys[tabIndex == 3 ? 2 : tabIndex],
-                      ),
-                ],
+              body: FadeTransition(
+                opacity: tabFade,
+                child: SlideTransition(
+                  position: tabSlide,
+                  child: IndexedStack(
+                    index: selectedTab,
+                    children: [
+                      for (var tabIndex = 0; tabIndex < 4; tabIndex++)
+                        if (tabIndex == 2)
+                          _RecordTab(key: ValueKey(recordVisits))
+                        else
+                          _tabNavigator(
+                            tabIndex,
+                            navigatorKeys[tabIndex == 3 ? 2 : tabIndex],
+                          ),
+                    ],
+                  ),
+                ),
               ),
               bottomNavigationBar:
                   tabObservers[selectedTab]?.showingQuiz == true
@@ -443,7 +479,7 @@ class _MainScreenState extends State<MainScreen> {
                                   (route) => route.isFirst,
                                 );
                               }
-                              setState(() => selectedTab = index);
+                              _selectTab(index);
                               library.refresh(); // 탭을 옮길 때마다 최신 기록으로
                             },
                             destinations: const [
@@ -501,7 +537,7 @@ class _MainScreenState extends State<MainScreen> {
           ? _QuizRoute<void>(quiz.toScreen())
           : MaterialPageRoute<void>(builder: (_) => const TopicScreen()),
     );
-    setState(() => selectedTab = 1);
+    _selectTab(1);
   }
 
   Widget _tabNavigator(int tabIndex, GlobalKey<NavigatorState> key) =>
@@ -515,7 +551,7 @@ class _MainScreenState extends State<MainScreen> {
             builder: (_) => switch (tabIndex) {
               0 => HomeScreen(
                 onContinue: _openStudySetup,
-                onRecords: () => setState(() => selectedTab = 2),
+                onRecords: () => _selectTab(2),
               ),
               1 => const StudyScreen(),
               _ => _MyTab(library: library),
@@ -541,7 +577,7 @@ class _QuizRouteObserver extends NavigatorObserver {
 
 // 기록 탭: 시안 화면(record_screen.dart)에 최근 7일 실제 통계(learning_stats.dart)를 채워서 보여 줌
 class _RecordTab extends StatelessWidget {
-  const _RecordTab();
+  const _RecordTab({super.key});
 
   static const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -554,7 +590,9 @@ class _RecordTab extends StatelessWidget {
 
     return record.RecordScreen(
       appBar: _tabAppBar(context, '기록 탭'),
-      status: library == null ? null : _loadStatus(library),
+      // 불러오는 중은 글자 대신 겹쳐 뜨는 진행 막대로 (내용이 밀리지 않게)
+      loading: library?.loading ?? false,
+      status: library == null || library.loading ? null : _loadStatus(library),
       accuracyPercent: accuracy == null ? null : (accuracy * 100).round(),
       weeklyRecords: [
         for (var i = 0; i < 7; i++)
@@ -1970,14 +2008,17 @@ class _ResultHeroState extends State<_ResultHero>
   );
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // 기기에서 애니메이션 줄이기를 켜 두면 바로 결과를 보여 줌
-    if (MediaQuery.disableAnimationsOf(context)) {
-      controller.value = 1;
-    } else if (!controller.isAnimating && controller.value == 0) {
-      controller.forward();
-    }
+  void initState() {
+    super.initState();
+    // 첫 화면을 그린 뒤 시작. 기기에서 애니메이션 줄이기를 켜 두면 바로 결과를 보여 줌
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        controller.value = 1;
+      } else {
+        controller.forward();
+      }
+    });
   }
 
   @override
