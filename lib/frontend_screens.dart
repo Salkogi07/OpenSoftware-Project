@@ -1364,9 +1364,10 @@ class _QuizScreenState extends State<QuizScreen> {
       finished = true;
       library?.clearQuizProgress();
       if (library?.preview != true) learningRepository.markAttendance();
+      // 학습 완료 화면도 하단 탭 없이 (나갈 때는 뒤로 가기·홈으로 버튼)
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => CompletionScreen(
+        _QuizRoute<void>(
+          CompletionScreen(
             words: widget.words,
             answers: List.unmodifiable(answers),
             isReview: widget.isReview,

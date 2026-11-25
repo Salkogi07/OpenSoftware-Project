@@ -236,6 +236,12 @@ void main() {
       await tester.pumpAndSettle();
     }
     expect(find.widgetWithText(AppBar, '학습 완료'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing); // 학습 완료 화면도 하단 탭 없음
+    // 홈으로 가면 하단 탭이 돌아옴
+    await tester.scrollUntilVisible(find.text('홈으로'), 120);
+    await tester.tap(find.text('홈으로'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
