@@ -1,6 +1,6 @@
 part of 'frontend_screens.dart';
 
-// 마이 탭 > 계정 관리: 이메일 확인, 닉네임·비밀번호 변경, 회원 탈퇴
+// 마이 탭 > 계정 관리: 로그인 정보, 보안(비밀번호·모든 기기 로그아웃), 계정 삭제
 class _AccountScreen extends StatelessWidget {
   const _AccountScreen();
 
@@ -8,36 +8,175 @@ class _AccountScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final library = _LibraryScope.watch(context)!;
     final email = library.email ?? (library.preview ? '미리보기 계정' : '-');
+    final joined = library.signedUpAt;
     return Scaffold(
       appBar: AppBar(title: const Text('계정 관리')),
       body: ScreenBody(
         children: [
-          const _MyHeading('내 계정'),
-          _InfoRow(label: '이메일', value: email),
-          const Divider(height: 1, color: _line),
-          _SettingLink(
-            icon: Icons.badge_outlined,
-            label: '닉네임',
-            detail: library.nickname,
-            onTap: () => _editNickname(context, library),
+          const _MyHeading('로그인 정보'),
+          _InfoRow(
+            icon: Icons.mail_outline_rounded,
+            label: '이메일',
+            value: email,
           ),
           const Divider(height: 1, color: _line),
+          const _InfoRow(
+            icon: Icons.key_outlined,
+            label: '로그인 방식',
+            value: '이메일·비밀번호',
+          ),
+          if (joined != null) ...[
+            const Divider(height: 1, color: _line),
+            _InfoRow(
+              icon: Icons.event_outlined,
+              label: '가입일',
+              value: '${joined.year}년 ${joined.month}월 ${joined.day}일',
+            ),
+          ],
+          const SizedBox(height: 18),
+          const _MyHeading('보안'),
           _SettingLink(
             icon: Icons.lock_outline_rounded,
             label: '비밀번호 변경',
             onTap: () => _changePassword(context, library),
           ),
-          const SizedBox(height: 32),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              style: TextButton.styleFrom(foregroundColor: _muted),
-              onPressed: () => _confirmDeleteAccount(context, library),
-              child: Text(
-                '회원 탈퇴',
-                style: _pretendardText(15, weight: 600, color: _muted),
+          const Divider(height: 1, color: _line),
+          _SettingLink(
+            icon: Icons.devices_outlined,
+            label: '모든 기기에서 로그아웃',
+            onTap: () => _confirmSignOutEverywhere(context, library),
+          ),
+          const SizedBox(height: 18),
+          const _MyHeading('계정 삭제'),
+          _SettingLink(
+            icon: Icons.person_remove_outlined,
+            label: '회원 탈퇴',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => _LibraryScope(
+                  notifier: library,
+                  child: const _DeleteAccountScreen(),
+                ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _confirmSignOutEverywhere(
+  BuildContext context,
+  _StudyLibrary library,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('모든 기기에서 로그아웃할까요?'),
+      content: const Text('이 기기를 포함해 로그인된 모든 기기에서 로그아웃돼요. 다시 쓰려면 로그인해야 해요.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('로그아웃'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await library.signOutEverywhere();
+  } catch (e) {
+    debugPrint('모든 기기 로그아웃 실패: $e');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그아웃하지 못했어요. 인터넷 연결을 확인해 주세요.')),
+      );
+    }
+  }
+}
+
+// 회원 탈퇴: 지워지는 내용을 읽고 확인해야 탈퇴 버튼이 켜짐
+class _DeleteAccountScreen extends StatefulWidget {
+  const _DeleteAccountScreen();
+
+  @override
+  State<_DeleteAccountScreen> createState() => _DeleteAccountScreenState();
+}
+
+class _DeleteAccountScreenState extends State<_DeleteAccountScreen> {
+  bool agreed = false;
+  bool deleting = false;
+
+  Future<void> delete(_StudyLibrary library) async {
+    setState(() => deleting = true);
+    try {
+      await library.deleteAccount();
+    } catch (e) {
+      debugPrint('회원 탈퇴 실패: $e');
+      if (!mounted) return;
+      setState(() => deleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('탈퇴하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final library = _LibraryScope.watch(context)!;
+    final text = Theme.of(context).textTheme;
+    final error = Theme.of(context).colorScheme.error;
+    return Scaffold(
+      appBar: AppBar(title: const Text('회원 탈퇴')),
+      body: ScreenBody(
+        footer: FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: error),
+          onPressed: agreed && !deleting ? () => delete(library) : null,
+          child: Text(deleting ? '탈퇴하는 중' : '탈퇴하기'),
+        ),
+        children: [
+          Text('${library.nickname}님, 떠나기 전에 확인해 주세요', style: text.titleLarge),
+          const SizedBox(height: 16),
+          Text('탈퇴하면 아래 내용이 바로 지워지고 되돌릴 수 없어요.', style: text.bodyLarge),
+          const SizedBox(height: 12),
+          for (final item in const [
+            '학습 기록과 정답률, 경험치',
+            '오답노트와 출석 기록, 배지',
+            '닉네임과 프로필 사진',
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 3),
+                    child: Icon(
+                      Icons.remove_circle_outline,
+                      size: 18,
+                      color: _muted,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(item, style: text.bodyMedium)),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          CheckboxListTile(
+            value: agreed,
+            onChanged: deleting
+                ? null
+                : (value) => setState(() => agreed = value ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: Text('위 내용을 확인했어요', style: text.bodyLarge),
           ),
         ],
       ),
@@ -133,69 +272,35 @@ Future<void> _changePassword(
   }
 }
 
-Future<void> _confirmDeleteAccount(
-  BuildContext context,
-  _StudyLibrary library,
-) async {
-  final error = Theme.of(context).colorScheme.error;
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('정말 탈퇴할까요?'),
-      content: const Text('계정과 함께 학습 기록, 오답노트, 출석 기록이 모두 지워지고 되돌릴 수 없어요.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('취소'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 44),
-            backgroundColor: error,
-          ),
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('탈퇴하기'),
-        ),
-      ],
-    ),
-  );
-  if (confirmed != true || !context.mounted) return;
-  try {
-    await library.deleteAccount();
-  } catch (e) {
-    debugPrint('회원 탈퇴 실패: $e');
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('탈퇴하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.')),
-      );
-    }
-  }
-}
-
+// 바꿀 수 없는 정보 한 줄: 아이콘 · 이름 · 값 (긴 이메일은 줄바꿈)
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
+  final IconData icon;
   final String label;
   final String value;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    dense: true,
-    visualDensity: VisualDensity.compact,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 5),
-    leading: const Icon(
-      Icons.mail_outline_rounded,
-      size: 24,
-      color: _tabUnselectedColor,
-    ),
-    title: Text(label, style: _pretendardText(17, weight: 820)),
-    trailing: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 210),
-      child: Text(
-        value,
-        overflow: TextOverflow.ellipsis,
-        style: _pretendardText(14, weight: 650, color: _muted),
-      ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 12),
+    child: Row(
+      children: [
+        Icon(icon, size: 24, color: _tabUnselectedColor),
+        const SizedBox(width: 16),
+        Text(label, style: _pretendardText(17, weight: 820)),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: _pretendardText(14, weight: 650, color: _muted),
+          ),
+        ),
+      ],
     ),
   );
 }

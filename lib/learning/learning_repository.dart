@@ -22,6 +22,12 @@ class LearningRepository {
   /// 로그인한 사용자의 이메일
   String? get email => _client?.auth.currentUser?.email;
 
+  /// 가입한 날
+  DateTime? get signedUpAt {
+    final createdAt = _client?.auth.currentUser?.createdAt;
+    return createdAt == null ? null : DateTime.tryParse(createdAt)?.toLocal();
+  }
+
   /// 로그인한 사용자의 클라이언트. 키가 없어 수파베이스를 안 켰거나(화면 작업·테스트) 로그아웃 상태면 null
   SupabaseClient? get _client {
     try {
@@ -101,6 +107,73 @@ class LearningRepository {
   /// 연속 출석일
   Future<int> fetchStreak() async =>
       currentStreak(await fetchAttendanceDays(), DateTime.now());
+
+  /// (지금 연속 출석일, 가장 길었던 연속 출석일)
+  Future<(int, int)> fetchStreaks() async {
+    final days = await fetchAttendanceDays();
+    return (currentStreak(days, DateTime.now()), longestStreak(days));
+  }
+
+  /// 프로필 사진 값 ('mascot:<이름>' 또는 'photo:<주소>'), 없으면 null
+  Future<String?> fetchAvatar() async {
+    final client = _client;
+    if (client == null) return null;
+    final row = await client
+        .from('profiles')
+        .select('avatar')
+        .eq('id', client.auth.currentUser!.id)
+        .maybeSingle();
+    return row?['avatar'] as String?;
+  }
+
+  /// 프로필 사진 값 저장. 사진을 바꾸면 예전에 올린 사진 파일은 지움
+  Future<void> updateAvatar(String avatar) async {
+    final client = _client;
+    if (client == null) return;
+    final userId = client.auth.currentUser!.id;
+    await client.from('profiles').upsert({'id': userId, 'avatar': avatar});
+    final keep = avatar.startsWith('photo:') ? avatar.split('/').last : null;
+    await _removeAvatarPhotos(client, except: keep);
+  }
+
+  /// 갤러리에서 고른 사진을 올리고 'photo:<공개 주소>' 값을 돌려줌
+  Future<String?> uploadAvatarPhoto(Uint8List bytes, String extension) async {
+    final client = _client;
+    if (client == null) return null;
+    final ext = extension.toLowerCase() == 'png' ? 'png' : 'jpg';
+    // 같은 이름에 덮어쓰면 캐시 때문에 예전 사진이 보일 수 있어 매번 새 이름으로 올림
+    final path =
+        '${client.auth.currentUser!.id}/${DateTime.now().millisecondsSinceEpoch}.$ext';
+    final bucket = client.storage.from('avatars');
+    await bucket.uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(
+        contentType: 'image/${ext == 'png' ? 'png' : 'jpeg'}',
+      ),
+    );
+    return 'photo:${bucket.getPublicUrl(path)}';
+  }
+
+  /// 본인이 올린 프로필 사진 파일 지우기 (회원 탈퇴 때도 사용)
+  Future<void> removeAvatarPhotos() async {
+    final client = _client;
+    if (client != null) await _removeAvatarPhotos(client);
+  }
+
+  Future<void> _removeAvatarPhotos(
+    SupabaseClient client, {
+    String? except,
+  }) async {
+    final userId = client.auth.currentUser!.id;
+    final bucket = client.storage.from('avatars');
+    final files = await bucket.list(path: userId);
+    final paths = [
+      for (final file in files)
+        if (file.name != except) '$userId/${file.name}',
+    ];
+    if (paths.isNotEmpty) await bucket.remove(paths);
+  }
 
   /// 오늘의 복습 문제 번호 (최대 3개)
   Future<List<String>> fetchReviewQuestionIds({int count = 3}) async =>

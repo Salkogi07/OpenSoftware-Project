@@ -49,6 +49,90 @@ int currentStreak(Iterable<DateTime> attendedDays, DateTime now) {
   return streak;
 }
 
+/// 지금까지 가장 길게 이어진 연속 출석일 (배지용: 연속이 끊겨도 한 번 얻은 배지는 유지)
+int longestStreak(Iterable<DateTime> attendedDays) {
+  final days =
+      attendedDays
+          .map((d) => DateTime.utc(d.year, d.month, d.day))
+          .toSet()
+          .toList()
+        ..sort();
+  var longest = 0, run = 0;
+  for (var i = 0; i < days.length; i++) {
+    run = i > 0 && days[i].difference(days[i - 1]).inDays == 1 ? run + 1 : 1;
+    if (run > longest) longest = run;
+  }
+  return longest;
+}
+
+/// 배지 하나: [current]가 [goal]에 닿으면 얻음
+class StudyBadge {
+  const StudyBadge({
+    required this.title,
+    required this.description,
+    required this.current,
+    required this.goal,
+  });
+
+  final String title;
+  final String description;
+  final int current;
+  final int goal;
+
+  bool get earned => current >= goal;
+}
+
+/// 학습 기록으로 계산한 배지 목록 (서버에 따로 저장하지 않음)
+List<StudyBadge> studyBadges(LearningSummary summary, int longestStreakDays) {
+  final accuracyPercent = summary.totalAnswers < 20
+      ? 0
+      : ((summary.accuracy ?? 0) * 100).floor();
+  return [
+    StudyBadge(
+      title: '첫 걸음',
+      description: '첫 문제 풀기',
+      current: summary.totalAnswers,
+      goal: 1,
+    ),
+    StudyBadge(
+      title: '꾸준한 출석',
+      description: '3일 연속 학습',
+      current: longestStreakDays,
+      goal: 3,
+    ),
+    StudyBadge(
+      title: '일주일 완주',
+      description: '7일 연속 학습',
+      current: longestStreakDays,
+      goal: 7,
+    ),
+    StudyBadge(
+      title: '단어 수집가',
+      description: '단어 30개 학습',
+      current: summary.learnedWords,
+      goal: 30,
+    ),
+    StudyBadge(
+      title: '어휘 박사',
+      description: '단어 100개 학습',
+      current: summary.learnedWords,
+      goal: 100,
+    ),
+    StudyBadge(
+      title: '문제 해결사',
+      description: '문제 100개 풀기',
+      current: summary.totalAnswers,
+      goal: 100,
+    ),
+    StudyBadge(
+      title: '정확한 눈',
+      description: '정답률 80% 달성',
+      current: accuracyPercent,
+      goal: 80,
+    ),
+  ];
+}
+
 /// 복습 문제 뽑기: 최근 7일 안에 틀렸거나 평균보다 오래 걸린 문제를 최대 [count]개
 /// 틀린 횟수가 많은 문제 → 오래 걸린 문제 순서로 고름
 List<String> pickReviewQuestionIds(

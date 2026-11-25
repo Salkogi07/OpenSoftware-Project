@@ -9,6 +9,7 @@ class _StudyLibrary extends ChangeNotifier {
   _StudyLibrary({required this.preview, this.onSignOut}) {
     if (preview) {
       streak = 7;
+      longestStreak = 7;
       summary = const LearningSummary(
         totalAnswers: 130,
         correctAnswers: 107,
@@ -41,6 +42,15 @@ class _StudyLibrary extends ChangeNotifier {
   /// 로그인한 이메일 (미리보기·로그아웃 상태면 null)
   String? get email => preview ? null : learningRepository.email;
 
+  /// 가입한 날 (미리보기·로그아웃 상태면 null)
+  DateTime? get signedUpAt => preview ? null : learningRepository.signedUpAt;
+
+  /// 이 기기를 포함해 로그인된 모든 기기에서 로그아웃
+  Future<void> signOutEverywhere() async {
+    if (!preview) await AuthService().signOutEverywhere();
+    await signOut();
+  }
+
   Future<void> signOut() async {
     if (preview) {
       setPreviewSignedIn(false);
@@ -55,7 +65,11 @@ class _StudyLibrary extends ChangeNotifier {
 
   /// 회원 탈퇴 뒤 로그인 화면으로 (미리보기는 로그아웃 상태로만 바꿈)
   Future<void> deleteAccount() async {
-    if (!preview) await AuthService().deleteAccount();
+    if (!preview) {
+      // 공개 저장소에 올린 프로필 사진부터 지움 (DB 함수로는 파일을 지울 수 없음)
+      await learningRepository.removeAvatarPhotos();
+      await AuthService().deleteAccount();
+    }
     await signOut();
   }
 
@@ -109,8 +123,12 @@ class _StudyLibrary extends ChangeNotifier {
   final mistakes = <(String, String), Word>{};
   String nickname = '어휘새싹';
 
+  /// 프로필 사진: 'mascot:<에셋>', 'photo:<주소>', 미리보기는 'file:<경로>'. null이면 기본 캐릭터
+  String? avatar;
+
   // 수파베이스에서 불러온 학습 기록 (로그인했을 때만 채워짐)
   int streak = 0;
+  int longestStreak = 0;
   LearningSummary summary = LearningSummary.empty;
   WeeklyStats weekly = weeklyStats(const [], DateTime.now());
   List<Word> topWrongWords = const [];
@@ -126,9 +144,9 @@ class _StudyLibrary extends ChangeNotifier {
     notifyListeners();
     try {
       await learningRepository.flush(); // 방금 푼 결과 저장이 끝난 뒤에 불러옴
-      final (name, newStreak, newSummary, wrongRows, attempts) = await (
+      final (name, streaks, newSummary, wrongRows, attempts) = await (
         learningRepository.fetchNickname(),
-        learningRepository.fetchStreak(),
+        learningRepository.fetchStreaks(),
         learningRepository.fetchSummary(),
         learningRepository.fetchWrongQuestionRows(),
         learningRepository.fetchRecentAttempts(),
@@ -140,7 +158,8 @@ class _StudyLibrary extends ChangeNotifier {
       final byId = {for (final row in topRows) row['id'] as String: row};
       if (_disposed) return;
       if (name != null && name.isNotEmpty) nickname = name;
-      streak = newStreak;
+      streak = streaks.$1;
+      longestStreak = streaks.$2;
       summary = newSummary;
       weekly = newWeekly;
       topWrongWords = [
@@ -159,6 +178,34 @@ class _StudyLibrary extends ChangeNotifier {
       loading = false;
       if (!_disposed) notifyListeners();
     }
+    // 프로필 사진은 따로 불러옴: 실패해도 학습 기록 표시에는 영향 없음
+    try {
+      final value = await learningRepository.fetchAvatar();
+      if (_disposed) return;
+      avatar = value;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('프로필 사진 불러오기 실패: $e');
+    }
+  }
+
+  /// 캐릭터 아바타로 바꾸기 ('mascot:<이름>')
+  Future<void> chooseMascot(String asset) => _setAvatar('mascot:$asset');
+
+  /// 갤러리에서 고른 사진으로 바꾸기. 미리보기는 올리지 않고 이 기기 파일을 그대로 보여 줌
+  Future<void> choosePhoto(XFile file) async {
+    if (preview) return _setAvatar('file:${file.path}');
+    final value = await learningRepository.uploadAvatarPhoto(
+      await file.readAsBytes(),
+      file.name.split('.').last,
+    );
+    if (value != null) await _setAvatar(value);
+  }
+
+  Future<void> _setAvatar(String value) async {
+    if (!preview) await learningRepository.updateAvatar(value);
+    avatar = value;
+    notifyListeners();
   }
 
   @override
@@ -433,8 +480,16 @@ class _MyPage extends StatelessWidget {
         children: [
           _LevelCard(
             nickname: library.nickname,
+            avatar: library.avatar,
             xp: library.summary.xp,
-            onEdit: () => _editNickname(context, library),
+            onEdit: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => _LibraryScope(
+                  notifier: library,
+                  child: const _ProfileScreen(),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 22),
           _MyHeading('나의 학습 현황', trailing: _loadStatus(library)),
@@ -593,11 +648,13 @@ class _MyPanel extends StatelessWidget {
 class _LevelCard extends StatelessWidget {
   const _LevelCard({
     required this.nickname,
+    required this.avatar,
     required this.xp,
     required this.onEdit,
   });
 
   final String nickname;
+  final String? avatar;
   final int xp;
   final VoidCallback onEdit;
 
@@ -610,16 +667,7 @@ class _LevelCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: const Color(0xfffbf5e7),
-              child: Image.asset(
-                _homeMascotAsset,
-                width: 72,
-                height: 78,
-                fit: BoxFit.contain,
-              ),
-            ),
+            _ProfileAvatar(avatar: avatar, radius: 40),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -664,7 +712,7 @@ class _LevelCard extends StatelessWidget {
                         ),
                         onPressed: onEdit,
                         child: Text(
-                          '프로필 편집 ›',
+                          '프로필 설정 ›',
                           style: _pretendardText(
                             12,
                             weight: 700,
