@@ -9,6 +9,49 @@ const _blankGuidance = '빈칸에 알맞은 표현을 골라보세요.';
 const _choiceGuidance = '가장 알맞은 답을 골라보세요.';
 
 void main() {
+  testWidgets('학습 완료 버튼의 간격과 정렬을 유지하고 짧은 화면에서는 스크롤한다', (tester) async {
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(360, 780);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const word = Word(
+      topic: '',
+      name: '개회',
+      meaning: '모임이나 회의를 시작함.',
+      distractor: '',
+      example: '',
+      alternative: '',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: frontendTheme,
+        home: CompletionScreen(
+          words: List.filled(5, word),
+          answers: const [true, false, false, false, false],
+          isReview: false,
+          nextBatch: () => [word],
+        ),
+      ),
+    );
+    final retry = find.widgetWithText(OutlinedButton, '틀린 문제 다시 풀기');
+    final next = find.widgetWithText(FilledButton, '같은 주제로 다음 5문제 풀기');
+    final home = find.widgetWithText(OutlinedButton, '홈으로');
+    final heading = find.text('다시 확인할 단어');
+    expect(tester.getTopLeft(retry).dx, tester.getTopLeft(heading).dx);
+    expect(tester.getRect(next).top - tester.getRect(retry).bottom, 5);
+    expect(tester.getRect(home).top - tester.getRect(next).bottom, 5);
+    expect(780 - tester.getRect(home).bottom, 46);
+
+    tester.view.physicalSize = const Size(360, 220);
+    await tester.pump();
+    await tester.scrollUntilVisible(home, 100);
+    await Scrollable.ensureVisible(tester.element(home), alignment: 0.5);
+    await tester.pump();
+    expect(home.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('미리보기의 모든 주제와 난이도에서 같은 퀴즈 카드를 표시한다', (tester) async {
     tester.view
       ..devicePixelRatio = 1
