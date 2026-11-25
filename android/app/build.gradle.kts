@@ -6,12 +6,15 @@ plugins {
 
 android {
     namespace = "com.example.opensoftware_project"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_local_notifications 23이 API 37 이상으로 컴파일을 요구 (targetSdk·minSdk는 그대로)
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // flutter_local_notifications의 예약 알림에 필요
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -46,4 +49,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

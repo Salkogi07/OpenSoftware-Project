@@ -343,7 +343,7 @@ class _MyTab extends StatelessWidget {
     _LibraryScope.watch(context);
     if (!library.preview || library.previewSignedIn) return const _MyPage();
     return Scaffold(
-      appBar: _tabAppBar(context, '하루어휘'),
+      appBar: _tabAppBar(context, '에르'),
       body: ScreenBody(
         children: [
           SizedBox(height: _phoneSpacing(context, 74)),

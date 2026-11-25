@@ -48,7 +48,7 @@ class HomeScreen extends StatelessWidget {
     final level = levelFor(library?.summary.xp ?? 0).level;
     final text = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: _tabAppBar(context, '하루어휘 - 홈', showDivider: false),
+      appBar: _tabAppBar(context, '에르 - 홈', showDivider: false),
       body: ScreenBody(
         contentPadding: const EdgeInsets.fromLTRB(15, 12, 15, 0),
         footerPadding: const EdgeInsets.fromLTRB(14, 12, 14, 11),
@@ -198,7 +198,7 @@ class HomeScreen extends StatelessWidget {
                             child: Image.asset(
                               _greetingMascot,
                               fit: BoxFit.contain,
-                              semanticLabel: '하루어휘 병아리',
+                              semanticLabel: '에르 병아리',
                             ),
                           ),
                         ],
