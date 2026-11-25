@@ -1,6 +1,27 @@
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// 로그인·회원가입 오류를 사용자에게 보여 줄 한국어 문구로 바꿈
+String authErrorMessage(Object error) {
+  if (error is ArgumentError) return '${error.message}';
+  if (error is AuthRetryableFetchException) {
+    return '인터넷 연결을 확인한 뒤 다시 시도해 주세요.';
+  }
+  if (error is AuthException) {
+    return switch (error.code) {
+      // 수파베이스는 보안상 "없는 계정"과 "틀린 비밀번호"를 구분해 알려 주지 않음
+      'invalid_credentials' => '이메일 또는 비밀번호가 잘못되었습니다.',
+      'email_not_confirmed' => '이메일 인증을 마친 뒤 로그인해 주세요.',
+      'user_already_exists' || 'email_exists' => '이미 가입된 이메일입니다.',
+      'weak_password' => '비밀번호가 너무 쉬워요. 더 길고 복잡하게 만들어 주세요.',
+      'over_request_rate_limit' ||
+      'over_email_send_rate_limit' => '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.',
+      _ => '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.',
+    };
+  }
+  return '연결에 문제가 생겼어요. 잠시 후 다시 시도해 주세요.';
+}
+
 /// Supabase 이메일 인증 및 사용자 정보 관리
 class AuthService {
   // 현재 프로젝트에서 초기화한 Supabase 클라이언트 사용

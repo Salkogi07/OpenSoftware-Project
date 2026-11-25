@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import 'auth_screen.dart';
+import 'auth_service.dart';
 import 'frontend_screens.dart' as frontend;
 
 // 로그인 뒤 화면: 디자인(frontend_screens.dart)의 하단 탭 화면을 디자인 테마로 보여줍니다.
@@ -8,6 +11,19 @@ class MainNavigationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(data: frontend.frontendTheme, child: const frontend.MainScreen());
+    // 로그아웃하면 탭 화면을 모두 닫고 로그인 화면으로 돌아감
+    Future<void> signOut() async {
+      await AuthService().signOut();
+      if (!context.mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
+        (_) => false,
+      );
+    }
+
+    return Theme(
+      data: frontend.frontendTheme,
+      child: frontend.MainScreen(onSignOut: signOut),
+    );
   }
 }

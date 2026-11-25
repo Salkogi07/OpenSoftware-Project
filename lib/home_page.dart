@@ -10,6 +10,9 @@ final _todayWord = loadQuestionBank().then((bank) {
   return words[dailyIndex(words.length, DateTime.now())];
 });
 
+/// 휴대폰 화면에서 시안 굵기가 얇아 보여서 모든 글자를 한 단계(+100) 굵게 그림
+const _weightBoost = 100.0;
+
 TextStyle _pretendardText(
   double size, {
   double weight = 400,
@@ -19,7 +22,9 @@ TextStyle _pretendardText(
   fontSize: size,
   height: 1.35,
   color: color,
-  fontVariations: [FontVariation('wght', weight)],
+  fontVariations: [
+    FontVariation('wght', math.min(weight + _weightBoost, 900)),
+  ],
 );
 
 TextStyle _homeText(

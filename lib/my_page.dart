@@ -6,7 +6,7 @@ const _muted = Color(0xff516477);
 const _line = Color(0xffdcebe5);
 
 class _StudyLibrary extends ChangeNotifier {
-  _StudyLibrary({required this.preview}) {
+  _StudyLibrary({required this.preview, this.onSignOut}) {
     if (preview) {
       streak = 7;
       summary = const LearningSummary(
@@ -19,7 +19,20 @@ class _StudyLibrary extends ChangeNotifier {
   }
 
   final bool preview;
+  final Future<void> Function()? onSignOut;
   bool previewSignedIn = false;
+
+  /// 로그인한 이메일 (미리보기·로그아웃 상태면 null)
+  String? get email => preview ? null : learningRepository.email;
+
+  Future<void> signOut() async {
+    if (preview) {
+      setPreviewSignedIn(false);
+      return;
+    }
+    await onSignOut?.call();
+  }
+
   int dailyGoal = HomeScreen.goal;
   TimeOfDay reminderTime = const TimeOfDay(hour: 20, minute: 0);
   final _previewLearned = <(String, String)>{};
@@ -165,37 +178,71 @@ class _SaveWordButton extends StatelessWidget {
   }
 }
 
+Future<void> _editNickname(BuildContext context, _StudyLibrary library) async {
+  var name = library.nickname;
+  final result = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('닉네임 변경'),
+      content: TextFormField(
+        initialValue: name,
+        maxLength: 16,
+        decoration: const InputDecoration(labelText: '닉네임'),
+        onChanged: (value) => name = value,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (name.trim().isNotEmpty) Navigator.pop(context, name.trim());
+          },
+          child: const Text('저장'),
+        ),
+      ],
+    ),
+  );
+  if (context.mounted && result != null) library.rename(result);
+}
+
+Future<void> _confirmSignOut(
+  BuildContext context,
+  _StudyLibrary library,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('로그아웃할까요?'),
+      content: const Text('학습 기록은 계정에 저장되어 있어요. 다시 로그인하면 이어서 볼 수 있어요.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('로그아웃'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  try {
+    await library.signOut();
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그아웃하지 못했어요. 인터넷 연결을 확인해 주세요.')),
+      );
+    }
+  }
+}
+
 class _MyPage extends StatelessWidget {
   const _MyPage();
-
-  Future<void> _editProfile(BuildContext context, _StudyLibrary library) async {
-    var name = library.nickname;
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('프로필 관리'),
-        content: TextFormField(
-          initialValue: name,
-          maxLength: 16,
-          decoration: const InputDecoration(labelText: '닉네임'),
-          onChanged: (value) => name = value,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (name.trim().isNotEmpty) Navigator.pop(context, name.trim());
-            },
-            child: const Text('저장'),
-          ),
-        ],
-      ),
-    );
-    if (context.mounted && result != null) library.rename(result);
-  }
 
   Future<void> _editDailyGoal(
     BuildContext context,
@@ -295,7 +342,7 @@ class _MyPage extends StatelessWidget {
           _LevelCard(
             nickname: library.nickname,
             xp: library.summary.xp,
-            onEdit: () => _editProfile(context, library),
+            onEdit: () => _editNickname(context, library),
           ),
           const SizedBox(height: 22),
           _MyHeading('나의 학습 현황', trailing: _loadStatus(library)),
@@ -357,17 +404,44 @@ class _MyPage extends StatelessWidget {
             detail: '${library.dailyGoal}문제',
             onTap: () => _editDailyGoal(context, library),
           ),
-          const Divider(height: 1, color: _line),
+          const SizedBox(height: 18),
+          const _MyHeading('계정'),
           _SettingLink(
             icon: Icons.person_outline_rounded,
             label: '계정 관리',
-            onTap: () => _editProfile(context, library),
-          ),
-          if (library.preview)
-            TextButton(
-              onPressed: () => library.setPreviewSignedIn(false),
-              child: const Text('미리보기 로그아웃'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => _LibraryScope(
+                  notifier: library,
+                  child: const _AccountScreen(),
+                ),
+              ),
             ),
+          ),
+          const Divider(height: 1, color: _line),
+          _SettingLink(
+            icon: Icons.logout_rounded,
+            label: '로그아웃',
+            onTap: () => _confirmSignOut(context, library),
+          ),
+          const SizedBox(height: 18),
+          const _MyHeading('정보'),
+          _SettingLink(
+            icon: Icons.privacy_tip_outlined,
+            label: '개인정보 처리방침',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const _PrivacyPolicyScreen(),
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: _line),
+          _SettingLink(
+            icon: Icons.description_outlined,
+            label: '오픈소스 라이선스',
+            onTap: () =>
+                showLicensePage(context: context, applicationName: '하루어휘'),
+          ),
         ],
       ),
     );
