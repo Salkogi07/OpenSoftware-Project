@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'auth_service.dart';
 import 'learning/learning_repository.dart';
+import 'learning/quiz_session.dart';
 import 'learning/learning_stats.dart';
 import 'record_screen.dart' as record;
 import 'study_settings.dart';
@@ -45,19 +46,24 @@ AppBar _tabAppBar(
   String visibleTitle = '에르',
   double? toolbarHeight,
   bool showDivider = true,
+  Widget? leading,
+  double? leadingWidth,
 }) => AppBar(
   title: Semantics(
     label: title == '에르' ? null : title,
     child: Text(visibleTitle),
   ),
   automaticallyImplyLeading: false,
-  leading: showBack && Navigator.of(context).canPop()
-      ? IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const _FrameIcon(_FrameSymbol.back, color: navy),
-        )
-      : null,
+  leadingWidth: leadingWidth,
+  leading:
+      leading ??
+      (showBack && Navigator.of(context).canPop()
+          ? IconButton(
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const _FrameIcon(_FrameSymbol.back, color: navy),
+            )
+          : null),
   centerTitle: true,
   toolbarHeight: toolbarHeight ?? _phoneSpacing(context, 60),
   backgroundColor: Colors.white,
@@ -487,7 +493,13 @@ class _MainScreenState extends State<MainScreen> {
   void _openStudySetup() {
     final study = navigatorKeys[1].currentState;
     study?.popUntil((route) => route.isFirst);
-    study?.push(MaterialPageRoute<void>(builder: (_) => const TopicScreen()));
+    // 풀던 문제가 있으면 그 자리부터, 없으면 주제 고르기부터
+    final quiz = library.activeQuiz;
+    study?.push(
+      quiz != null
+          ? _QuizRoute<void>(quiz.toScreen())
+          : MaterialPageRoute<void>(builder: (_) => const TopicScreen()),
+    );
     setState(() => selectedTab = 1);
   }
 
@@ -608,6 +620,10 @@ class StudyScreen extends StatelessWidget {
             title: '오늘의 어휘를\n학습해볼까요?',
             subtitle: '짧은 퀴즈로 쉽고 재미있게 배워요!',
           ),
+          if (library?.activeQuiz case final quiz?) ...[
+            const SizedBox(height: 12),
+            _ResumeQuizCard(quiz: quiz),
+          ],
           const SizedBox(height: 15),
           Row(
             children: [
@@ -729,123 +745,366 @@ class TopicScreen extends StatefulWidget {
 }
 
 class _TopicScreenState extends State<TopicScreen> {
-  static const difficulties = {
-    '하': '표현을 보고 뜻 고르기',
-    '중': '상황에 맞는 표현 고르기',
-    '상': '정의에 맞는 표현 고르기',
-  };
+  static const difficulties = [
+    ('하', '표현을 보고\n뜻 고르기'),
+    ('중', '상황에 맞는\n표현 고르기'),
+    ('상', '정의에 맞는\n표현 고르기'),
+  ];
+  static const counts = [5, 10, 15, 20];
 
-  late Future<List<Word>> bank = loadQuestions();
-  final remaining = <(String, String), List<Word>>{};
+  late Future<List<Word>> bank = loadQuestionBank();
   late String? topic = widget.initialTopic;
   late String? difficulty = widget.initialDifficulty;
-
-  Future<List<Word>> loadQuestions() => loadQuestionBank();
-
-  List<Word> nextBatch(List<Word> bank, String topic, String difficulty) {
-    final key = (topic, difficulty);
-    final queue = remaining.putIfAbsent(key, () => []);
-    if (queue.isEmpty) {
-      queue.addAll(
-        bank.where(
-          (word) => word.topic == topic && word.difficulty == difficulty,
-        ),
-      );
-      queue.shuffle();
-    }
-    final batch = queue.take(5).toList();
-    queue.removeRange(0, batch.length);
-    return batch;
-  }
+  int count = 5;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final library = _LibraryScope.watch(context);
+    final preview = library?.preview ?? false;
     return Scaffold(
       appBar: _tabAppBar(context, '에르', showBack: false),
       body: FutureBuilder<List<Word>>(
-        future: _LibraryScope.watch(context)?.preview == true
-            ? _previewBank
-            : bank,
+        future: preview ? _previewBank : bank,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return ScreenBody(
               children: [
                 const Text('문제를 불러오지 못했어요.'),
                 OutlinedButton(
-                  onPressed: () => setState(() => bank = loadQuestions()),
+                  onPressed: () => setState(() => bank = loadQuestionBank()),
                   child: const Text('다시 불러오기'),
                 ),
               ],
             );
           }
-          final preview = _LibraryScope.watch(context)?.preview ?? false;
           final words = snapshot.data;
           if (words == null) {
             return const Center(child: CircularProgressIndicator());
           }
           final selectedTopic = topic;
           final selectedDifficulty = difficulty;
+          final ready = selectedTopic != null && selectedDifficulty != null;
+          final quiz = library?.activeQuiz;
           return ScreenBody(
+            footerPadding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
             footer: FilledButton(
-              onPressed: selectedTopic == null || selectedDifficulty == null
+              onPressed: !ready
                   ? null
                   : () {
                       if (ModalRoute.of(context)?.isCurrent != true) return;
+                      // 미리보기는 주제마다 예시 문제가 5개뿐이라 있는 만큼만 냄
                       List<Word> next() => preview
-                          ? _previewQuestions(selectedTopic, selectedDifficulty)
-                          : nextBatch(words, selectedTopic, selectedDifficulty);
-                      openQuiz(context, next(), nextBatch: next);
+                          ? _previewQuestions(
+                              selectedTopic,
+                              selectedDifficulty,
+                            ).take(count).toList()
+                          : library!.nextBatch(
+                              words,
+                              selectedTopic,
+                              selectedDifficulty,
+                              count,
+                            );
+                      openQuiz(
+                        context,
+                        next(),
+                        nextBatch: next,
+                        topic: selectedTopic,
+                        difficulty: selectedDifficulty,
+                      );
                     },
-              child: const Text('5문제 시작하기'),
+              child: Text(ready ? '$count문제 시작하기' : '주제와 난이도를 골라 주세요'),
             ),
             children: [
-              Text('학습 주제', style: text.headlineMedium),
-              const SizedBox(height: 8),
-              const Text('주제와 난이도를 골라 5문제를 풀어보세요.'),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 4,
-                runSpacing: 2,
+              if (quiz != null) ...[
+                _ResumeQuizCard(quiz: quiz),
+                const SizedBox(height: 24),
+              ],
+              const _TopicSectionTitle('주제'),
+              for (final (name, _, icon) in _studyTopics)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _TopicOption(
+                    icon: icon,
+                    title: name,
+                    description: _topicDescriptions[name] ?? '',
+                    selected: selectedTopic == name,
+                    onTap: () => setState(() => topic = name),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              const _TopicSectionTitle('난이도'),
+              Row(
                 children: [
-                  for (final category
-                      in words.map((word) => word.topic).toSet())
-                    ChoiceChip(
-                      label: Text(
-                        category,
-                        style: _pretendardText(11, weight: 850),
+                  for (final (index, (level, description))
+                      in difficulties.indexed) ...[
+                    if (index > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: _LevelOption(
+                        level: level,
+                        description: description,
+                        selected: selectedDifficulty == level,
+                        onTap: () => setState(() => difficulty = level),
                       ),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      selected: selectedTopic == category,
-                      onSelected: (_) => setState(() => topic = category),
                     ),
+                  ],
                 ],
               ),
-              if (selectedTopic == '현재는 상대적으로 드문 격식어') ...[
-                const SizedBox(height: 8),
-                const Text('사용 빈도 조사와 별개로 정한 학습 주제예요.'),
-              ],
-              const SizedBox(height: 24),
-              Text('난이도', style: text.titleLarge),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 4,
-                runSpacing: 2,
+              const SizedBox(height: 16),
+              const _TopicSectionTitle('문제 수'),
+              Row(
                 children: [
-                  for (final entry in difficulties.entries)
-                    ChoiceChip(
-                      label: Text('${entry.key} · ${entry.value}'),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      selected: selectedDifficulty == entry.key,
-                      onSelected: (_) => setState(() => difficulty = entry.key),
+                  for (final (index, value) in counts.indexed) ...[
+                    if (index > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: _CountOption(
+                        count: value,
+                        selected: count == value,
+                        onTap: () => setState(() => count = value),
+                      ),
                     ),
+                  ],
                 ],
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+const _topicDescriptions = {
+  _officialTopic: '회의·발표·공문에서 자주 쓰는 말',
+  _confusingTopic: '원래 뜻에서 뻗어 나와 헷갈리는 말',
+  _formalTopic: '요즘은 드물지만 글에서 만나는 격식어',
+};
+
+class _TopicSectionTitle extends StatelessWidget {
+  const _TopicSectionTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(title, style: _pretendardText(19, weight: 850)),
+  );
+}
+
+/// 고를 수 있는 상자 공통 모양: 고르면 민트 바탕 + 초록 테두리
+class _SelectableBox extends StatelessWidget {
+  const _SelectableBox({
+    required this.selected,
+    required this.onTap,
+    required this.child,
+    required this.semanticsLabel,
+    this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+  });
+
+  final bool selected;
+  final VoidCallback onTap;
+  final Widget child;
+  final String semanticsLabel;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: selected,
+    label: semanticsLabel,
+    child: Material(
+      color: selected ? mint : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: cardRadius,
+        side: BorderSide(
+          color: selected ? green : const Color(0xffdde3e8),
+          width: selected ? 2 : 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: padding,
+          child: ExcludeSemantics(child: child),
+        ),
+      ),
+    ),
+  );
+}
+
+class _TopicOption extends StatelessWidget {
+  const _TopicOption({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => _SelectableBox(
+    selected: selected,
+    onTap: onTap,
+    semanticsLabel: '$title, $description',
+    child: Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : const Color(0xfff2f5f3),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(icon, color: selected ? green : _studyMuted, size: 23),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: _pretendardText(16, weight: 800)),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: _pretendardText(13, weight: 550, color: _muted),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Icon(
+          selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+          color: selected ? green : const Color(0xffc5ccd3),
+          size: 24,
+        ),
+      ],
+    ),
+  );
+}
+
+class _LevelOption extends StatelessWidget {
+  const _LevelOption({
+    required this.level,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String level;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => _SelectableBox(
+    selected: selected,
+    onTap: onTap,
+    semanticsLabel: '난이도 $level, ${description.replaceAll('\n', ' ')}',
+    padding: const EdgeInsets.fromLTRB(6, 10, 6, 10),
+    child: Column(
+      children: [
+        Text(
+          level,
+          style: _pretendardText(
+            24,
+            weight: 900,
+            color: selected ? green : navy,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          description,
+          textAlign: TextAlign.center,
+          style: _pretendardText(12.5, weight: 600, color: _muted),
+        ),
+      ],
+    ),
+  );
+}
+
+class _CountOption extends StatelessWidget {
+  const _CountOption({
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => _SelectableBox(
+    selected: selected,
+    onTap: onTap,
+    semanticsLabel: '$count문제',
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    child: Text(
+      '$count문제',
+      textAlign: TextAlign.center,
+      style: _pretendardText(15, weight: 800, color: selected ? green : navy),
+    ),
+  );
+}
+
+/// 풀다가 나간 문제 이어서 풀기
+class _ResumeQuizCard extends StatelessWidget {
+  const _ResumeQuizCard({required this.quiz});
+
+  final _ActiveQuiz quiz;
+
+  @override
+  Widget build(BuildContext context) {
+    final where = [
+      if (quiz.isReview) '오답 복습' else ?quiz.topic,
+      ?quiz.difficulty,
+    ].join(' · ');
+    return Material(
+      color: orange,
+      borderRadius: cardRadius,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _resumeQuiz(context, quiz),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.play_circle_fill_rounded,
+                color: _tabSelectedColor,
+                size: 34,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '풀던 문제 이어서 풀기',
+                      style: _pretendardText(16, weight: 850),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if (where.isNotEmpty) where,
+                        '${quiz.words.length}문제 중 ${quiz.index + 1}번째부터',
+                      ].join('\n'),
+                      style: _pretendardText(13, weight: 600, color: _muted),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: navy),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -936,22 +1195,63 @@ const news = Word(
   example: '많은 시민이 이번 논의의 귀추에 주목하고 있다.',
 );
 
+/// 푸는 중인 문제 묶음과 진행 상황 (이어서 풀기에 씀)
+class _ActiveQuiz {
+  const _ActiveQuiz({
+    required this.words,
+    this.index = 0,
+    this.answers = const [],
+    this.isReview = false,
+    this.topic,
+    this.difficulty,
+    this.nextBatch,
+  });
+
+  final List<Word> words;
+  final int index;
+  final List<bool> answers;
+  final bool isReview;
+  final String? topic;
+  final String? difficulty;
+  final List<Word> Function()? nextBatch;
+
+  QuizScreen toScreen() => QuizScreen(
+    words: words,
+    isReview: isReview,
+    nextBatch: nextBatch,
+    startIndex: index,
+    startAnswers: answers,
+    topic: topic,
+    difficulty: difficulty,
+  );
+}
+
 void openQuiz(
   BuildContext context,
   List<Word> words, {
   bool isReview = false,
   List<Word> Function()? nextBatch,
-}) {
+  String? topic,
+  String? difficulty,
+}) => _resumeQuiz(
+  context,
+  _ActiveQuiz(
+    words: words,
+    isReview: isReview,
+    nextBatch: nextBatch,
+    topic: topic,
+    difficulty: difficulty,
+  ),
+);
+
+void _resumeQuiz(BuildContext context, _ActiveQuiz quiz) {
   if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
-  Navigator.of(context).push(
-    _QuizRoute(
-      QuizScreen(words: words, isReview: isReview, nextBatch: nextBatch),
-    ),
-  );
+  Navigator.of(context).push(_QuizRoute<void>(quiz.toScreen()));
 }
 
-class _QuizRoute extends MaterialPageRoute<void> {
-  _QuizRoute(QuizScreen screen) : super(builder: (_) => screen);
+/// 문제 풀이·해설처럼 하단 탭을 숨기는 화면
+class _QuizRoute<T> extends MaterialPageRoute<T> {
+  _QuizRoute(Widget screen) : super(builder: (_) => screen);
 }
 
 class QuizScreen extends StatefulWidget {
@@ -960,11 +1260,21 @@ class QuizScreen extends StatefulWidget {
     required this.words,
     this.isReview = false,
     this.nextBatch,
+    this.startIndex = 0,
+    this.startAnswers = const [],
+    this.topic,
+    this.difficulty,
   }) : assert(words.length > 0);
 
   final List<Word> words;
   final bool isReview;
   final List<Word> Function()? nextBatch;
+
+  /// 이어서 풀 때 시작할 문제 위치와 앞에서 푼 결과
+  final int startIndex;
+  final List<bool> startAnswers;
+  final String? topic;
+  final String? difficulty;
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -972,13 +1282,38 @@ class QuizScreen extends StatefulWidget {
 
 class _QuizScreenState extends State<QuizScreen> {
   final scrollController = ScrollController();
-  int questionIndex = 0;
+  late int questionIndex = widget.startIndex;
   bool showingExplanation = false;
   String? selectedChoice;
-  final List<bool> answers = [];
+  late final List<bool> answers = [...widget.startAnswers];
   // 푼 결과 저장용: 문제가 보인 뒤 걸린 시간, 이미 저장한 문제 위치(같은 문제를 두 번 저장하지 않게)
   final answerTimer = Stopwatch()..start();
   int? savedQuestionIndex;
+  bool finished = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 시작하자마자 진행 상황을 남겨 두면, 첫 문제에서 나가도 이어서 풀 수 있음
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) saveProgress();
+    });
+  }
+
+  void saveProgress() => _LibraryScope.read(context)?.saveQuizProgress(
+    _ActiveQuiz(
+      words: widget.words,
+      index: questionIndex,
+      answers: List.unmodifiable(answers),
+      isReview: widget.isReview,
+      topic: widget.topic,
+      difficulty: widget.difficulty,
+      nextBatch: widget.nextBatch,
+    ),
+  );
+
+  /// 풀다가 나가면 진행 상황은 남겨 두고 이어서 풀 수 있다고 알려 줌
+  void leave() => Navigator.of(context).maybePop();
 
   @override
   void dispose() {
@@ -1012,9 +1347,10 @@ class _QuizScreenState extends State<QuizScreen> {
       );
     }
     final lastQuestion = questionIndex == widget.words.length - 1;
+    // 해설 화면도 문제 풀이에 집중하도록 하단 탭을 숨김
     final advance = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => ExplanationScreen(
+      _QuizRoute<bool>(
+        ExplanationScreen(
           word: word,
           answer: choice,
           continueLabel: lastQuestion ? '학습 마치기' : '다음 문제',
@@ -1025,6 +1361,8 @@ class _QuizScreenState extends State<QuizScreen> {
     if (!mounted) return;
     if (advance == true) answers.add(choice == word.correctChoice);
     if (advance == true && lastQuestion) {
+      finished = true;
+      library?.clearQuizProgress();
       if (library?.preview != true) learningRepository.markAttendance();
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
@@ -1033,6 +1371,8 @@ class _QuizScreenState extends State<QuizScreen> {
             answers: List.unmodifiable(answers),
             isReview: widget.isReview,
             nextBatch: widget.nextBatch,
+            topic: widget.topic,
+            difficulty: widget.difficulty,
           ),
         ),
       );
@@ -1046,6 +1386,8 @@ class _QuizScreenState extends State<QuizScreen> {
         answerTimer.reset();
       }
     });
+    // ponytail: 정답 확인 뒤 다음 문제로 넘기기 전에 나가면 그 문제를 다시 풀게 되고 기록도 한 번 더 남음
+    if (advance == true) saveProgress();
     if (advance == true && scrollController.hasClients) {
       scrollController.jumpTo(0);
     }
@@ -1066,85 +1408,109 @@ class _QuizScreenState extends State<QuizScreen> {
             : word.example.replaceFirst(word.name, '{빈칸}'));
     final selected = selectedChoice;
     final compact = MediaQuery.sizeOf(context).height < 800;
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _tabAppBar(
-        context,
-        '학습 퀴즈',
-        visibleTitle: '학습',
-        toolbarHeight: 52,
-      ),
-      body: ScreenBody(
-        controller: scrollController,
-        contentPadding: const EdgeInsets.fromLTRB(16, 24, 16, 14),
-        footerPadding: EdgeInsets.fromLTRB(16, 20, 16, compact ? 32 : 56),
-        footer: FilledButton(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(56),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(19),
-            ),
-            backgroundColor: const Color(0xff193f60),
-            disabledBackgroundColor: const Color(0xff193f60),
-            disabledForegroundColor: Colors.white,
-            textStyle: _pretendardText(22, weight: 850),
+    final messenger = ScaffoldMessenger.of(context);
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop || finished) return;
+        messenger.showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(milliseconds: 2500),
+            content: Text('풀던 문제를 저장했어요. 학습 탭에서 이어서 풀 수 있어요.'),
           ),
-          onPressed: selected == null || showingExplanation
-              ? null
-              : () => submitAnswer(selected),
-          child: const Text('정답 확인하기'),
+        );
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _tabAppBar(
+          context,
+          '학습 퀴즈',
+          visibleTitle: '학습',
+          toolbarHeight: 52,
+          leadingWidth: 104,
+          leading: TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: navy,
+              padding: const EdgeInsets.only(left: 8),
+              textStyle: _pretendardText(16, weight: 750),
+            ),
+            onPressed: leave,
+            icon: const _FrameIcon(_FrameSymbol.back, color: navy),
+            label: const Text('나가기'),
+          ),
         ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Row(
-              children: [
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '${questionIndex + 1}',
-                        style: const TextStyle(color: _quizGreen),
-                      ),
-                      TextSpan(text: ' / ${widget.words.length}'),
-                    ],
-                  ),
-                  style: _pretendardText(18, weight: 850),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: LinearProgressIndicator(
-                    value: (questionIndex + 1) / widget.words.length,
-                    minHeight: 13,
-                    stopIndicatorRadius: 0,
-                    trackGap: 0,
-                    borderRadius: BorderRadius.circular(8),
-                    color: _quizGreen,
-                    backgroundColor: _quizTrack,
-                    semanticsLabel: '퀴즈 진행률',
-                  ),
-                ),
-              ],
+        body: ScreenBody(
+          controller: scrollController,
+          contentPadding: const EdgeInsets.fromLTRB(16, 24, 16, 14),
+          footerPadding: EdgeInsets.fromLTRB(16, 20, 16, compact ? 32 : 56),
+          footer: FilledButton(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(19),
+              ),
+              backgroundColor: const Color(0xff193f60),
+              disabledBackgroundColor: const Color(0xff193f60),
+              disabledForegroundColor: Colors.white,
+              textStyle: _pretendardText(22, weight: 850),
             ),
+            onPressed: selected == null || showingExplanation
+                ? null
+                : () => submitAnswer(selected),
+            child: const Text('정답 확인하기'),
           ),
-          const SizedBox(height: 20),
-          _QuizPromptCard(prompt: prompt, hint: word.hint, compact: compact),
-          const SizedBox(height: 12),
-          for (final (index, choice) in choices.indexed)
+          children: [
             Padding(
-              padding: EdgeInsets.only(
-                bottom: index < choices.length - 1 ? 8 : 0,
-              ),
-              child: _QuizChoice(
-                index: index,
-                choice: choice,
-                selected: selected == choice,
-                onPressed: showingExplanation
-                    ? null
-                    : () => setState(() => selectedChoice = choice),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${questionIndex + 1}',
+                          style: const TextStyle(color: _quizGreen),
+                        ),
+                        TextSpan(text: ' / ${widget.words.length}'),
+                      ],
+                    ),
+                    style: _pretendardText(18, weight: 850),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: (questionIndex + 1) / widget.words.length,
+                      minHeight: 13,
+                      stopIndicatorRadius: 0,
+                      trackGap: 0,
+                      borderRadius: BorderRadius.circular(8),
+                      color: _quizGreen,
+                      backgroundColor: _quizTrack,
+                      semanticsLabel: '퀴즈 진행률',
+                    ),
+                  ),
+                ],
               ),
             ),
-        ],
+            const SizedBox(height: 20),
+            _QuizPromptCard(prompt: prompt, hint: word.hint, compact: compact),
+            const SizedBox(height: 12),
+            for (final (index, choice) in choices.indexed)
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: index < choices.length - 1 ? 8 : 0,
+                ),
+                child: _QuizChoice(
+                  index: index,
+                  choice: choice,
+                  selected: selected == choice,
+                  onPressed: showingExplanation
+                      ? null
+                      : () => setState(() => selectedChoice = choice),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1390,12 +1756,16 @@ class CompletionScreen extends StatefulWidget {
     required this.answers,
     required this.isReview,
     this.nextBatch,
+    this.topic,
+    this.difficulty,
   });
 
   final List<Word> words;
   final List<bool> answers;
   final bool isReview;
   final List<Word> Function()? nextBatch;
+  final String? topic;
+  final String? difficulty;
 
   @override
   State<CompletionScreen> createState() => _CompletionScreenState();
@@ -1408,11 +1778,13 @@ class _CompletionScreenState extends State<CompletionScreen> {
     if (leaving) return;
     setState(() => leaving = true);
     Navigator.of(context).pushReplacement(
-      _QuizRoute(
+      _QuizRoute<void>(
         QuizScreen(
           words: words,
           isReview: isReview,
           nextBatch: widget.nextBatch,
+          topic: isReview ? null : widget.topic,
+          difficulty: isReview ? null : widget.difficulty,
         ),
       ),
     );
@@ -1480,8 +1852,10 @@ class _CompletionScreenState extends State<CompletionScreen> {
                   ),
                 ),
                 onPressed: leaving ? null : () => startQuiz(nextBatch()),
-                child: const Text(
-                  '같은 주제로 다음 5문제 풀기',
+                child: Text(
+                  isReview
+                      ? '같은 주제로 새 문제 풀기'
+                      : '같은 주제로 다음 ${words.length}문제 풀기',
                   textAlign: TextAlign.center,
                 ),
               ),

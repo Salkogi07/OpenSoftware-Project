@@ -18,6 +18,85 @@ class _StudyLibrary extends ChangeNotifier {
       );
     } else {
       _loadSettings();
+      _loadQuizSession();
+    }
+  }
+
+  /// 풀다가 나간 문제 (이어서 풀기). 없으면 null
+  _ActiveQuiz? activeQuiz;
+
+  // 주제·난이도별로 아직 안 낸 문제 (같은 문제가 바로 다시 나오지 않게)
+  final _remaining = <(String, String), List<Word>>{};
+
+  /// [topic]·[difficulty] 문제 [count]개 뽑기. 다 내면 다시 섞어서 처음부터
+  List<Word> nextBatch(
+    List<Word> bank,
+    String topic,
+    String difficulty,
+    int count,
+  ) => takeBatch(
+    _remaining.putIfAbsent((topic, difficulty), () => []),
+    count,
+    () => bank.where(
+      (word) => word.topic == topic && word.difficulty == difficulty,
+    ),
+  );
+
+  /// 문제를 넘길 때마다 진행 상황 저장 (로그인 상태면 앱을 다시 켜도 이어짐)
+  void saveQuizProgress(_ActiveQuiz quiz) {
+    activeQuiz = quiz;
+    notifyListeners();
+    final ids = [for (final word in quiz.words) ?word.id];
+    if (preview || ids.length != quiz.words.length) return;
+    saveQuizSession(
+      QuizSession(
+        questionIds: ids,
+        index: quiz.index,
+        answers: quiz.answers,
+        isReview: quiz.isReview,
+        topic: quiz.topic,
+        difficulty: quiz.difficulty,
+      ),
+    ).catchError((Object e) => debugPrint('풀던 문제 저장 실패: $e'));
+  }
+
+  void clearQuizProgress() {
+    if (activeQuiz == null) return;
+    activeQuiz = null;
+    notifyListeners();
+    if (!preview) {
+      saveQuizSession(null)
+          .catchError((Object e) => debugPrint('풀던 문제 지우기 실패: $e'));
+    }
+  }
+
+  Future<void> _loadQuizSession() async {
+    try {
+      final session = await loadQuizSession();
+      if (session == null || _disposed) return;
+      final bank = await loadQuestionBank();
+      final byId = {for (final word in bank) word.id: word};
+      final words = [for (final id in session.questionIds) ?byId[id]];
+      if (_disposed || activeQuiz != null) return;
+      if (words.length != session.count) {
+        await saveQuizSession(null); // 문제 은행이 바뀌어 찾을 수 없는 문제가 있음
+        return;
+      }
+      final (topic, difficulty) = (session.topic, session.difficulty);
+      activeQuiz = _ActiveQuiz(
+        words: words,
+        index: session.index,
+        answers: session.answers,
+        isReview: session.isReview,
+        topic: topic,
+        difficulty: difficulty,
+        nextBatch: topic == null || difficulty == null
+            ? null
+            : () => nextBatch(bank, topic, difficulty, session.count),
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('풀던 문제 불러오기 실패: $e');
     }
   }
 
