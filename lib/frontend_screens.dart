@@ -297,7 +297,7 @@ class ScreenBody extends StatelessWidget {
                         children: children,
                       ),
                     ),
-                    if (paddedFooter != null) paddedFooter,
+                    ?paddedFooter,
                   ],
                 ),
         ),
