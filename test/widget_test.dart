@@ -100,6 +100,12 @@ void main() {
     );
     await tester.tap(official);
     await tester.pumpAndSettle();
+    // 학습 주제 미리보기: 주제 단어를 교과서처럼 가나다순으로 보여 줌
+    expect(find.widgetWithText(AppBar, '학습 주제 미리보기'), findsOneWidget);
+    expect(find.textContaining('개회', findRichText: true), findsWidgets);
+    expect(find.text('함께 보면 좋은 말'), findsWidgets);
+    await tester.tap(find.text('이 주제로 문제 풀기'));
+    await tester.pumpAndSettle();
     // 주제 카드에서 고른 주제에 체크 표시
     expect(
       find.descendant(
