@@ -5,9 +5,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'auth_service.dart';
 import 'learning/learning_repository.dart';
 import 'learning/learning_stats.dart';
 import 'record_screen.dart' as record;
+import 'study_settings.dart';
 
 part 'home_page.dart';
 part 'my_page.dart';
@@ -37,12 +39,12 @@ AppBar _tabAppBar(
   String title, {
   List<Widget>? actions,
   bool showBack = true,
-  String visibleTitle = '하루어휘',
+  String visibleTitle = '에르',
   double? toolbarHeight,
   bool showDivider = true,
 }) => AppBar(
   title: Semantics(
-    label: title == '하루어휘' ? null : title,
+    label: title == '에르' ? null : title,
     child: Text(visibleTitle),
   ),
   automaticallyImplyLeading: false,
@@ -227,7 +229,7 @@ class VocabularyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '하루어휘',
+      title: '에르',
       debugShowCheckedModeBanner: false,
       theme: frontendTheme,
       home: const MainScreen(preview: true),
@@ -757,7 +759,7 @@ class _TopicScreenState extends State<TopicScreen> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: _tabAppBar(context, '하루어휘', showBack: false),
+      appBar: _tabAppBar(context, '에르', showBack: false),
       body: FutureBuilder<List<Word>>(
         future: _LibraryScope.watch(context)?.preview == true
             ? _previewBank

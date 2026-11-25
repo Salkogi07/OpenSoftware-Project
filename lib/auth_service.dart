@@ -14,6 +14,8 @@ String authErrorMessage(Object error) {
       'email_not_confirmed' => '이메일 인증을 마친 뒤 로그인해 주세요.',
       'user_already_exists' || 'email_exists' => '이미 가입된 이메일입니다.',
       'weak_password' => '비밀번호가 너무 쉬워요. 더 길고 복잡하게 만들어 주세요.',
+      'same_password' => '지금 쓰는 비밀번호와 다른 비밀번호를 입력해 주세요.',
+      'reauthentication_needed' => '보안을 위해 다시 로그인한 뒤 비밀번호를 바꿔 주세요.',
       'over_request_rate_limit' ||
       'over_email_send_rate_limit' => '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.',
       _ => '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.',
@@ -96,6 +98,22 @@ class AuthService {
   /// 로그아웃
   Future<void> signOut() async {
     await _supabase.auth.signOut();
+  }
+
+  /// 로그인한 상태에서 비밀번호 바꾸기
+  Future<void> changePassword(String newPassword) async {
+    await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+  }
+
+  /// 회원 탈퇴: 계정과 학습 기록을 지우고 로그아웃
+  /// (DB 함수 delete_my_account, supabase/migrations/20261126000000_delete_my_account.sql)
+  Future<void> deleteAccount() async {
+    await _supabase.rpc('delete_my_account');
+    try {
+      await _supabase.auth.signOut();
+    } on AuthException {
+      // 계정이 이미 지워져 서버 로그아웃이 실패해도 기기의 로그인 정보는 지워짐
+    }
   }
 
   /// 현재 로그인한 사용자의 프로필 조회

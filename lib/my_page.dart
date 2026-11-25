@@ -15,6 +15,22 @@ class _StudyLibrary extends ChangeNotifier {
         learnedWords: 120,
         todayAnswers: 7,
       );
+    } else {
+      _loadSettings();
+    }
+  }
+
+  // 기기에 저장한 하루 목표·알림 설정 불러오기 (미리보기는 저장하지 않음)
+  Future<void> _loadSettings() async {
+    try {
+      final settings = await loadStudySettings();
+      if (_disposed) return;
+      dailyGoal = settings.dailyGoal;
+      reminderTime = settings.reminderTime;
+      reminderOn = settings.reminderOn;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('학습 설정 불러오기 실패: $e');
     }
   }
 
@@ -33,8 +49,19 @@ class _StudyLibrary extends ChangeNotifier {
     await onSignOut?.call();
   }
 
-  int dailyGoal = HomeScreen.goal;
-  TimeOfDay reminderTime = const TimeOfDay(hour: 20, minute: 0);
+  Future<void> changePassword(String newPassword) async {
+    if (!preview) await AuthService().changePassword(newPassword);
+  }
+
+  /// 회원 탈퇴 뒤 로그인 화면으로 (미리보기는 로그아웃 상태로만 바꿈)
+  Future<void> deleteAccount() async {
+    if (!preview) await AuthService().deleteAccount();
+    await signOut();
+  }
+
+  int dailyGoal = StudySettings.defaults.dailyGoal;
+  TimeOfDay reminderTime = StudySettings.defaults.reminderTime;
+  bool reminderOn = false;
   final _previewLearned = <(String, String)>{};
 
   int get studyCompleted =>
@@ -59,11 +86,22 @@ class _StudyLibrary extends ChangeNotifier {
 
   void setGoal(int goal) {
     dailyGoal = goal;
+    if (!preview) saveDailyGoal(goal);
     notifyListeners();
   }
 
-  void setReminderTime(TimeOfDay time) {
+  /// 매일 [time]에 학습 알림. 알림 권한을 거절하면 false
+  Future<bool> turnOnReminderAt(TimeOfDay time) async {
+    if (!preview && !await turnOnReminder(time)) return false;
     reminderTime = time;
+    reminderOn = true;
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> turnOffReminderNow() async {
+    if (!preview) await turnOffReminder(reminderTime);
+    reminderOn = false;
     notifyListeners();
   }
 
@@ -241,6 +279,60 @@ Future<void> _confirmSignOut(
   }
 }
 
+/// 알림이 켜져 있으면 시간 변경/끄기를 고르고, 꺼져 있으면 바로 시간을 골라 켬
+Future<void> _editReminder(BuildContext context, _StudyLibrary library) async {
+  const change = 1, off = 2;
+  final action = library.reminderOn
+      ? await showDialog<int>(
+          context: context,
+          builder: (context) => SimpleDialog(
+            title: Text('매일 ${library.reminderTime.format(context)}에 알림'),
+            children: [
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, change),
+                child: const Text('알림 시간 바꾸기'),
+              ),
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, off),
+                child: const Text('알림 끄기'),
+              ),
+            ],
+          ),
+        )
+      : change;
+  if (!context.mounted || action == null) return;
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    if (action == off) {
+      await library.turnOffReminderNow();
+      messenger.showSnackBar(const SnackBar(content: Text('학습 알림을 껐어요.')));
+      return;
+    }
+    final time = await showTimePicker(
+      context: context,
+      initialTime: library.reminderTime,
+      helpText: '매일 학습 알림 받을 시간',
+    );
+    if (time == null) return;
+    final on = await library.turnOnReminderAt(time);
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          on
+              ? '매일 ${time.format(context)}에 학습 알림을 보내 드릴게요.'
+              : '알림 권한을 허용해야 학습 알림을 받을 수 있어요. 설정 앱에서 알림을 켜 주세요.',
+        ),
+      ),
+    );
+  } catch (e) {
+    debugPrint('학습 알림 설정 실패: $e');
+    messenger.showSnackBar(
+      const SnackBar(content: Text('알림을 설정하지 못했어요. 잠시 후 다시 시도해 주세요.')),
+    );
+  }
+}
+
 class _MyPage extends StatelessWidget {
   const _MyPage();
 
@@ -386,16 +478,10 @@ class _MyPage extends StatelessWidget {
           _SettingLink(
             icon: Icons.notifications_none_rounded,
             label: '알림 설정',
-            detail: library.reminderTime.format(context),
-            onTap: () async {
-              final time = await showTimePicker(
-                context: context,
-                initialTime: library.reminderTime,
-              );
-              if (context.mounted && time != null) {
-                library.setReminderTime(time);
-              }
-            },
+            detail: library.reminderOn
+                ? library.reminderTime.format(context)
+                : '꺼짐',
+            onTap: () => _editReminder(context, library),
           ),
           const Divider(height: 1, color: _line),
           _SettingLink(
@@ -440,7 +526,7 @@ class _MyPage extends StatelessWidget {
             icon: Icons.description_outlined,
             label: '오픈소스 라이선스',
             onTap: () =>
-                showLicensePage(context: context, applicationName: '하루어휘'),
+                showLicensePage(context: context, applicationName: '에르'),
           ),
         ],
       ),
