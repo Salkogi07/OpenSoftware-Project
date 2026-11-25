@@ -38,6 +38,7 @@ class RecordScreen extends StatefulWidget {
     this.status,
     this.appBar,
     this.loading = false,
+    this.ranking,
   });
 
   /// 최근 7일 기록 (오래된 날 → 오늘 순서)
@@ -58,6 +59,9 @@ class RecordScreen extends StatefulWidget {
   /// 기록을 불러오는 중이면 상단에 얇은 진행 막대를 겹쳐 보여 줌 (내용을 밀지 않음)
   final bool loading;
 
+  /// 상단 '랭킹' 전환으로 보여 줄 랭킹 칸 (없으면 전환 버튼도 표시 안 함)
+  final Widget? ranking;
+
   @override
   State<RecordScreen> createState() => _RecordScreenState();
 }
@@ -68,6 +72,9 @@ class _RecordScreenState extends State<RecordScreen> {
 
   // 첫 화면은 막대 높이 0으로 그리고, 다음 프레임에 실제 높이로 바꿔 차오르게 함
   bool _revealed = false;
+
+  // 위쪽 전환: false면 내 기록, true면 랭킹
+  bool _showRanking = false;
 
   @override
   void initState() {
@@ -100,29 +107,67 @@ class _RecordScreenState extends State<RecordScreen> {
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.white,
           ),
-      body: Stack(
+      body: Column(
         children: [
-          _content(records, maxVolume),
-          // 불러오는 중 표시는 내용 위에 겹쳐서: 나타나고 사라져도 아래 내용이 움직이지 않음
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            // 불러오는 동안에만 만들어서, 끝나면 움직이는 막대가 남지 않게
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: widget.loading
-                  ? const LinearProgressIndicator(
-                      minHeight: 3,
-                      color: Color(0xFF2E7D32),
-                      backgroundColor: Color(0xFFDDEFE3),
-                      semanticsLabel: '기록 불러오는 중',
-                    )
-                  : const SizedBox.shrink(),
+          if (widget.ranking != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('내 기록')),
+                    ButtonSegment(value: true, label: Text('랭킹')),
+                  ],
+                  selected: {_showRanking},
+                  onSelectionChanged: (selection) =>
+                      setState(() => _showRanking = selection.first),
+                ),
+              ),
             ),
-          ),
+          Expanded(child: _body(records, maxVolume)),
         ],
       ),
+    );
+  }
+
+  Widget _body(List<DailyRecord> records, int maxVolume) {
+    final ranking = widget.ranking;
+    return Stack(
+      children: [
+        // 랭킹은 숨겨져 있어도 살려 둬서, 전환할 때마다 다시 불러오지 않음
+        if (ranking == null)
+          _content(records, maxVolume)
+        else
+          IndexedStack(
+            index: _showRanking ? 1 : 0,
+            children: [
+              _content(records, maxVolume),
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: ranking,
+              ),
+            ],
+          ),
+        // 불러오는 중 표시는 내용 위에 겹쳐서: 나타나고 사라져도 아래 내용이 움직이지 않음
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          // 불러오는 동안에만 만들어서, 끝나면 움직이는 막대가 남지 않게
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: widget.loading
+                ? const LinearProgressIndicator(
+                    minHeight: 3,
+                    color: Color(0xFF2E7D32),
+                    backgroundColor: Color(0xFFDDEFE3),
+                    semanticsLabel: '기록 불러오는 중',
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ),
+      ],
     );
   }
 

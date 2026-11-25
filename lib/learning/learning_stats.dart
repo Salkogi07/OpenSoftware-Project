@@ -291,3 +291,59 @@ const xpPerLevel = 100;
   xpInLevel: xp % xpPerLevel,
   xpForNext: (xp ~/ xpPerLevel + 1) * xpPerLevel,
 );
+
+/// 랭킹 한 줄 (DB 함수 leaderboard 결과)
+class RankingEntry {
+  const RankingEntry({
+    required this.nickname,
+    required this.avatar,
+    required this.correctAnswers,
+    required this.attendanceDays,
+    required this.isMe,
+  });
+
+  factory RankingEntry.fromRow(Map<String, dynamic> row) => RankingEntry(
+    nickname: row['nickname'] as String,
+    avatar: row['avatar'] as String?,
+    correctAnswers: row['correct_answers'] as int,
+    attendanceDays: row['attendance_days'] as int,
+    isMe: row['is_me'] as bool,
+  );
+
+  final String nickname;
+  final String? avatar;
+  final int correctAnswers;
+  final int attendanceDays;
+  final bool isMe;
+
+  int get xp => correctAnswers * xpPerCorrect;
+}
+
+/// 랭킹 기준
+enum RankingMetric { correct, xp, attendance }
+
+int rankingScore(RankingEntry entry, RankingMetric metric) => switch (metric) {
+  RankingMetric.correct => entry.correctAnswers,
+  RankingMetric.xp => entry.xp,
+  RankingMetric.attendance => entry.attendanceDays,
+};
+
+/// 점수 높은 순으로 (순위, 줄) 목록. 점수가 같으면 같은 순위 (1, 2, 2, 4)
+/// 점수가 0인 사람은 빼되, 본인은 0점이어도 맨 아래에 남김
+List<(int, RankingEntry)> rankEntries(
+  List<RankingEntry> entries,
+  RankingMetric metric,
+) {
+  final sorted = [
+    for (final e in entries)
+      if (rankingScore(e, metric) > 0 || e.isMe) e,
+  ]..sort((a, b) => rankingScore(b, metric).compareTo(rankingScore(a, metric)));
+  final ranked = <(int, RankingEntry)>[];
+  for (var i = 0; i < sorted.length; i++) {
+    final tied =
+        i > 0 &&
+        rankingScore(sorted[i], metric) == rankingScore(sorted[i - 1], metric);
+    ranked.add((tied ? ranked[i - 1].$1 : i + 1, sorted[i]));
+  }
+  return ranked;
+}

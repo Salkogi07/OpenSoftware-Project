@@ -139,4 +139,44 @@ void main() {
     expect(dailyIndex(500, next), (dailyIndex(500, late) + 1) % 500);
     expect(dailyIndex(1, next), 0);
   });
+
+  rankingTests();
+}
+
+RankingEntry entry(String name, int correct, int days, {bool me = false}) =>
+    RankingEntry(
+      nickname: name,
+      avatar: null,
+      correctAnswers: correct,
+      attendanceDays: days,
+      isMe: me,
+    );
+
+void rankingTests() {
+  group('랭킹', () {
+    final entries = [
+      entry('가', 10, 1),
+      entry('나', 30, 2),
+      entry('다', 10, 5),
+      entry('나야', 0, 0, me: true),
+      entry('라', 0, 3),
+    ];
+
+    test('점수 높은 순, 같은 점수는 같은 순위, 0점은 빼고 본인은 남김', () {
+      final ranked = rankEntries(entries, RankingMetric.correct);
+      expect(
+        [for (final (r, e) in ranked) '$r${e.nickname}'],
+        ['1나', '2가', '2다', '4나야'],
+      );
+    });
+
+    test('출석 기준으로 바꾸면 출석일 순', () {
+      final ranked = rankEntries(entries, RankingMetric.attendance);
+      expect(
+        [for (final (_, e) in ranked) e.nickname],
+        ['다', '라', '나', '가', '나야'],
+      );
+      expect(rankingScore(entries[1], RankingMetric.xp), 90);
+    });
+  });
 }

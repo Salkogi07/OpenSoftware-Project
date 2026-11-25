@@ -21,6 +21,7 @@ part 'frame_icons.dart';
 part 'account_pages.dart';
 part 'profile_pages.dart';
 part 'topic_book.dart';
+part 'ranking_section.dart';
 
 void main() => runApp(const VocabularyApp());
 
@@ -590,6 +591,7 @@ class _RecordTab extends StatelessWidget {
 
     return record.RecordScreen(
       appBar: _tabAppBar(context, '기록 탭'),
+      ranking: const _RankingSection(),
       // 불러오는 중은 글자 대신 겹쳐 뜨는 진행 막대로 (내용이 밀리지 않게)
       loading: library?.loading ?? false,
       status: library == null || library.loading ? null : _loadStatus(library),

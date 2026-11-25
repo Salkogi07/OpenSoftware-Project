@@ -195,6 +195,17 @@ class LearningRepository {
     return LearningSummary.fromRow(rows.first as Map<String, dynamic>);
   }
 
+  /// 랭킹 (DB 함수 leaderboard). [weekly]면 이번 주, 아니면 전체 기간
+  Future<List<RankingEntry>> fetchLeaderboard({required bool weekly}) async {
+    final client = _client;
+    if (client == null) return const [];
+    final rows = await client.rpc(
+      'leaderboard',
+      params: {'p_weekly': weekly},
+    ) as List<dynamic>;
+    return [for (final row in rows) RankingEntry.fromRow(row)];
+  }
+
   /// 가입할 때 정한 닉네임 (profiles 표)
   Future<String?> fetchNickname() async {
     final client = _client;

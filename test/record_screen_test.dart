@@ -76,4 +76,22 @@ void main() {
     expect(find.text('로그인하면 기록이 저장돼요'), findsOneWidget);
     expect(find.textContaining('이번 주에 푼 문제가 없어요'), findsOneWidget);
   });
+
+  testWidgets('기록 탭: 위쪽 전환으로 바로 랭킹을 본다', (tester) async {
+    await pumpPhone(
+      tester,
+      const RecordScreen(
+        accuracyPercent: null,
+        weeklyRecords: [],
+        topWrongWords: [],
+        ranking: Text('랭킹 내용'),
+      ),
+    );
+    expect(find.text('랭킹 내용'), findsNothing);
+
+    await tester.tap(find.text('랭킹'));
+    await tester.pumpAndSettle();
+    expect(find.text('랭킹 내용'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
