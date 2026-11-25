@@ -70,14 +70,17 @@ void main() {
       '현재는 상대적으로 드문 격식어',
       '뜻을 혼동하기 쉬운 표현',
     ]) {
-      for (final (difficulty, label) in [
-        ('하', '하 · 표현을 보고 뜻 고르기'),
-        ('중', '중 · 상황에 맞는 표현 고르기'),
-        ('상', '상 · 정의에 맞는 표현 고르기'),
-      ]) {
-        await tester.tap(find.widgetWithText(ChoiceChip, topic));
-        await tester.tap(find.widgetWithText(ChoiceChip, label));
-        await tester.pump();
+      for (final difficulty in ['하', '중', '상']) {
+        // 주제는 위쪽, 난이도는 아래쪽에 있어 각각 그쪽으로 스크롤해서 고름
+        for (final (option, delta) in [
+          (find.text(topic), -150.0),
+          (find.text(difficulty), 150.0),
+        ]) {
+          await tester.scrollUntilVisible(option, delta);
+          await tester.pumpAndSettle();
+          await tester.tap(option);
+          await tester.pump();
+        }
         await tester.tap(find.text('5문제 시작하기'));
         await tester.pumpAndSettle();
 
@@ -146,9 +149,12 @@ void main() {
         expect(confirm.hitTestable(), findsOneWidget);
         expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
         expect(tester.takeException(), isNull);
-        await tester.pageBack();
+        await tester.tap(find.text('나가기'));
         await tester.pumpAndSettle();
         expect(find.byType(NavigationBar), findsOneWidget);
+        ScaffoldMessenger.of(tester.element(find.byType(NavigationBar)))
+            .clearSnackBars();
+        await tester.pumpAndSettle();
       }
     }
   });

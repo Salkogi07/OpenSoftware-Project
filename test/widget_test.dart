@@ -100,14 +100,26 @@ void main() {
     );
     await tester.tap(official);
     await tester.pumpAndSettle();
+    // 주제 카드에서 고른 주제에 체크 표시
     expect(
-      tester
-          .widget<ChoiceChip>(
-            find.widgetWithText(ChoiceChip, '공식 석상에서 자주 쓰는 단어'),
-          )
-          .selected,
-      isTrue,
+      find.descendant(
+        of: find
+            .ancestor(
+              of: find.text('공식 석상에서 자주 쓰는 단어'),
+              matching: find.byType(InkWell),
+            )
+            .first,
+        matching: find.byIcon(Icons.check_circle_rounded),
+      ),
+      findsOneWidget,
     );
+    expect(find.text('5문제 시작하기'), findsNothing); // 난이도를 아직 안 고름
+    await tester.scrollUntilVisible(find.text('10문제'), 200);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('10문제'));
+    await tester.tap(find.text('하'));
+    await tester.pump();
+    expect(find.text('10문제 시작하기'), findsOneWidget);
     await tester.tap(find.text('학습'));
     await tester.pumpAndSettle();
     expect(find.text('오늘의 추천 어휘'), findsOneWidget);
@@ -198,7 +210,9 @@ void main() {
     await tester.tap(find.text('이어 학습하기'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('공식 석상에서 자주 쓰는 단어'));
-    await tester.tap(find.text('중 · 상황에 맞는 표현 고르기'));
+    await tester.ensureVisible(find.text('중'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('중'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('5문제 시작하기'));
     await tester.pumpAndSettle();
