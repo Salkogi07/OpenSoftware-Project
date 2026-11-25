@@ -1798,7 +1798,6 @@ class _CompletionScreenState extends State<CompletionScreen> {
     final isReview = widget.isReview;
     final correctCount = answers.where((correct) => correct).length;
     final accuracy = words.isEmpty ? 0.0 : correctCount / words.length;
-    final percentage = (accuracy * 100).round();
     final earnedXp = correctCount * 3;
     final missedWords = [
       for (var index = 0; index < words.length; index++)
@@ -1882,95 +1881,262 @@ class _CompletionScreenState extends State<CompletionScreen> {
           ],
         ),
         children: [
-          const MascotPanel(
-            message: '끝까지 해냈어요! 🎉',
-            compact: true,
-            dance: true,
+          _ResultHero(
+            accuracy: accuracy,
+            correctCount: correctCount,
+            total: words.length,
           ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: const BoxDecoration(
-              color: orange,
-              borderRadius: cardRadius,
-            ),
-            child: Column(
-              children: [
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  children: [
-                    const Text('이번 학습에서 받은 보상'),
-                    Text('+$earnedXp XP', style: text.titleMedium),
-                  ],
-                ),
-                Text(
-                  '정답 1문제당 3 XP · $correctCount문제 정답',
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _ResultStat(label: '맞힌 문제', value: '$correctCount', color: green),
+              const SizedBox(width: 8),
+              _ResultStat(
+                label: '틀린 문제',
+                value: '${missedWords.length}',
+                color: _rust,
+              ),
+              const SizedBox(width: 8),
+              _ResultStat(
+                label: '받은 경험치',
+                value: '+$earnedXp',
+                color: _tabSelectedColor,
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Semantics(
-            container: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  children: [
-                    Text(
-                      '정답률 $percentage%',
-                      style: text.titleMedium?.copyWith(color: green),
-                    ),
-                    Text('${words.length}문제 중 $correctCount문제를 맞혔어요.'),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(
-                  value: accuracy,
-                  minHeight: 6,
-                  color: green,
-                  backgroundColor: mint,
-                  borderRadius: BorderRadius.circular(8),
-                  semanticsLabel: '정답률',
-                  semanticsValue: '$percentage%',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
           Text(
-            missedWords.isEmpty ? '모두 정답이에요! 🎉' : '다시 확인할 단어',
+            missedWords.isEmpty ? '이번에 학습한 단어' : '다시 확인할 단어',
             style: text.titleMedium,
           ),
-          const SizedBox(height: 8),
-          if (missedWords.isEmpty)
-            const Text('배운 단어를 한 번 더 복습하면 오래 기억할 수 있어요.')
-          else
-            for (final word in missedWords)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: word.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      TextSpan(text: ' · ${word.meaning}'),
-                    ],
-                  ),
-                ),
-              ),
+          const SizedBox(height: 6),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: cardRadius,
+              border: Border.all(color: _line),
+            ),
+            child: Column(
+              children: [
+                for (final (index, word)
+                    in (missedWords.isEmpty ? words : missedWords).indexed) ...[
+                  if (index > 0) const Divider(height: 1, color: _line),
+                  _ResultWordRow(word: word, correct: missedWords.isEmpty),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+/// 학습 결과 카드: 마스코트가 튀어 들어오고 정답률 고리가 0%부터 차오름
+class _ResultHero extends StatefulWidget {
+  const _ResultHero({
+    required this.accuracy,
+    required this.correctCount,
+    required this.total,
+  });
+
+  final double accuracy;
+  final int correctCount;
+  final int total;
+
+  @override
+  State<_ResultHero> createState() => _ResultHeroState();
+}
+
+class _ResultHeroState extends State<_ResultHero>
+    with SingleTickerProviderStateMixin {
+  late final controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  );
+  // 앞부분은 마스코트 등장, 뒤로 갈수록 고리가 천천히 멈춤
+  late final mascot = CurvedAnimation(
+    parent: controller,
+    curve: const Interval(0, 0.45, curve: Curves.easeOutBack),
+  );
+  late final ring = CurvedAnimation(
+    parent: controller,
+    curve: const Interval(0.15, 1, curve: Curves.easeOutCubic),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 기기에서 애니메이션 줄이기를 켜 두면 바로 결과를 보여 줌
+    if (MediaQuery.disableAnimationsOf(context)) {
+      controller.value = 1;
+    } else if (!controller.isAnimating && controller.value == 0) {
+      controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (widget.accuracy * 100).round();
+    final (title, asset) = switch (percent) {
+      100 => ('완벽해요!', _celebratingMascot),
+      >= 80 => ('아주 잘했어요!', _celebratingMascot),
+      >= 50 => ('좋아요, 조금만 더!', 'assets/images/chick_mascot_happy.png'),
+      _ => ('다시 도전해 봐요!', _quizMascotAsset),
+    };
+    return Semantics(
+      container: true,
+      label:
+          '$title 정답률 $percent%, ${widget.total}문제 중 ${widget.correctCount}문제 정답',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        decoration: const BoxDecoration(color: mint, borderRadius: cardRadius),
+        child: Row(
+          children: [
+            AnimatedBuilder(
+              animation: ring,
+              builder: (context, _) => SizedBox.square(
+                dimension: 112,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CircularProgressIndicator(
+                      value: widget.accuracy * ring.value,
+                      strokeWidth: 12,
+                      strokeCap: StrokeCap.round,
+                      color: green,
+                      backgroundColor: Colors.white,
+                    ),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${(percent * ring.value).round()}%',
+                            style: _pretendardText(30, weight: 900),
+                          ),
+                          Text(
+                            '정답률',
+                            style: _pretendardText(
+                              12.5,
+                              weight: 650,
+                              color: _muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ScaleTransition(
+                    scale: mascot,
+                    alignment: Alignment.bottomLeft,
+                    child: Image.asset(asset, height: 64),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(title, style: _pretendardText(21, weight: 900)),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${widget.total}문제 중 ${widget.correctCount}문제를 맞혔어요',
+                    style: _pretendardText(14, weight: 600, color: _muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResultStat extends StatelessWidget {
+  const _ResultStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: cardRadius,
+        border: Border.all(color: _line),
+      ),
+      child: Column(
+        children: [
+          Text(value, style: _pretendardText(22, weight: 900, color: color)),
+          const SizedBox(height: 2),
+          Text(label, style: _pretendardText(12.5, weight: 650, color: _muted)),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ResultWordRow extends StatelessWidget {
+  const _ResultWordRow({required this.word, required this.correct});
+
+  final Word word;
+  final bool correct;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: '${word.name}, ${word.meaning}, ${correct ? '맞힘' : '틀림'}',
+    excludeSemantics: true,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              correct ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              size: 18,
+              color: correct ? green : _rust,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: word.name,
+                    style: _pretendardText(15, weight: 850),
+                  ),
+                  TextSpan(
+                    text: '  ${word.meaning}',
+                    style: _pretendardText(13.5, weight: 550, color: _muted),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class ExplanationScreen extends StatefulWidget {
