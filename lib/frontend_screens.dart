@@ -20,6 +20,7 @@ part 'study_preview.dart';
 part 'frame_icons.dart';
 part 'account_pages.dart';
 part 'profile_pages.dart';
+part 'topic_book.dart';
 
 void main() => runApp(const VocabularyApp());
 
@@ -721,7 +722,12 @@ class StudyScreen extends StatelessWidget {
                     child: _StudyTopicTile(
                       label: label,
                       icon: icon,
-                      onTap: () => setup(topic: topic),
+                      // 주제 단어를 교과서처럼 미리 읽어 보기
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => _TopicBookScreen(topic: topic),
+                        ),
+                      ),
                     ),
                   ),
                 ],
