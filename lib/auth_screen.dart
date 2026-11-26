@@ -56,6 +56,8 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
+      // 회원가입 뒤 바로 로그인됐는지 (수파베이스 'Confirm email'이 꺼져 있으면 세션이 바로 옴)
+      var signedIn = _isLogin;
       if (_isLogin) {
         // 로그인
         await _authService.signIn(
@@ -64,17 +66,18 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       } else {
         // 회원가입
-        await _authService.signUp(
+        final response = await _authService.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text,
           nickname: _nicknameController.text.trim(),
         );
+        signedIn = response.session != null;
       }
 
       // 로그인 또는 회원가입 성공 시 메인 화면으로 이동
       if (!mounted) return;
 
-      if (_isLogin) {
+      if (signedIn) {
       // 로그인 성공 시 메인 화면으로 이동
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
