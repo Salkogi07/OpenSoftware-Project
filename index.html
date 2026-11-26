@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>에르 · 하루 5문제 우리말 어휘 앱 내려받기</title>
+<meta name="description" content="헷갈리던 우리말을 하루 5문제 퀴즈로 익히는 안드로이드 앱 '에르'. APK를 내려받아 바로 설치하세요.">
+<meta property="og:title" content="에르 · 하루 5문제 우리말 어휘 앱">
+<meta property="og:description" content="공식적인 자리의 말부터 요즘 잘 안 쓰는 격식어까지, 짧은 퀴즈로 익혀요.">
+<meta property="og:image" content="https://salkogi07.github.io/OpenSoftware-Project/img/icon.png">
+<meta name="theme-color" content="#e7f7eb">
+<link rel="icon" href="img/icon.png">
+<link rel="preload" href="pretendard-subset.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face {
+  font-family: "Pretendard";
+  src: url("pretendard-subset.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  --navy: #082440;
+  --navy-2: #193f60;
+  --green: #087d17;
+  --green-deep: #0b5a17;
+  --mint: #e7f7eb;
+  --mint-2: #cfeeda;
+  --orange: #ef6b00;
+  --orange-tint: #ffe4bf;
+  --ink-soft: #3d5468;
+  --line: #dde3e8;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color: var(--navy);
+  background: #fff;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+::selection { background: var(--orange-tint); color: var(--navy); }
+img { display: block; max-width: 100%; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; border-radius: 10px; }
+.wrap { width: min(1120px, 100% - 40px); margin-inline: auto; }
+
+/* 상단 */
+.top { background: var(--mint); }
+.top .wrap { display: flex; align-items: center; gap: 10px; padding-block: 18px; }
+.top img { width: 40px; height: 40px; border-radius: 12px; }
+.top strong { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+
+/* 첫 화면: 민트 바탕 + 직접 풀어 보는 문제 */
+.hero { background: var(--mint); padding: 28px 0 88px; }
+.hero .wrap { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+h1 {
+  margin: 0 0 18px;
+  font-size: clamp(36px, 5.4vw, 64px);
+  line-height: 1.18;
+  letter-spacing: -0.035em;
+  font-weight: 800;
+  text-wrap: balance;
+}
+h1 em { font-style: normal; color: var(--green); }
+.lead { margin: 0 0 32px; font-size: clamp(17px, 1.6vw, 20px); color: var(--ink-soft); max-width: 30em; }
+.get { display: flex; flex-wrap: wrap; align-items: center; gap: 22px 28px; }
+.download {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 20px 30px;
+  background: var(--navy); color: #fff;
+  border-radius: 18px;
+  font-size: 19px; font-weight: 700; text-decoration: none;
+  box-shadow: 0 10px 24px -12px rgba(8, 36, 64, 0.55);
+  transition: transform .2s cubic-bezier(.2,.8,.2,1), background-color .2s;
+}
+.download:hover { background: var(--navy-2); transform: translateY(-2px); }
+.download:active { transform: translateY(0); }
+.download svg { width: 22px; height: 22px; flex: none; }
+.meta { margin: 14px 0 0; font-size: 14px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.ios-note {
+  display: none; margin: 14px 0 0; padding: 12px 16px;
+  background: var(--orange-tint); border-radius: 12px; font-size: 15px; color: #6b3500;
+}
+.is-ios .ios-note { display: block; }
+.qr { display: flex; align-items: center; gap: 14px; }
+.qr img { width: 96px; height: 96px; padding: 8px; background: #fff; border-radius: 14px; border: 1px solid var(--mint-2); }
+.qr p { margin: 0; font-size: 14px; color: var(--ink-soft); max-width: 11em; line-height: 1.5; }
+
+/* 문제 카드: 앱의 퀴즈 화면과 같은 모양 */
+.quiz {
+  background: #fff;
+  border-radius: 32px;
+  padding: 26px;
+  box-shadow: 0 30px 60px -30px rgba(8, 36, 64, 0.35);
+}
+.quiz-head { display: flex; align-items: center; gap: 14px; background: var(--mint); border-radius: 24px 24px 0 0; padding: 16px 18px 0; }
+.quiz-head img { width: 84px; height: 84px; object-fit: contain; transition: transform .5s cubic-bezier(.2,.8,.2,1); }
+.quiz.solved .quiz-head img { transform: translateY(-6px) rotate(-4deg); }
+.bubble { background: #2f7556; color: #fff; font-weight: 700; font-size: 15px; padding: 10px 16px; border-radius: 14px; }
+.question-box { background: var(--mint); border-radius: 0 0 24px 24px; padding: 14px 18px 18px; }
+.question {
+  margin: 0; background: #fff; border-radius: 20px; padding: 22px 20px;
+  font-size: clamp(20px, 2.1vw, 25px); font-weight: 800; line-height: 1.45; text-align: center; letter-spacing: -0.02em;
+}
+.choices { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
+.choices button {
+  width: 100%; display: flex; align-items: center; gap: 14px;
+  padding: 13px 18px; border: 1.5px solid var(--line); border-radius: 999px;
+  background: #fff; color: var(--navy); font: inherit; font-size: 18px; font-weight: 700; text-align: left; cursor: pointer;
+  transition: background-color .25s, border-color .25s, color .25s;
+}
+.choices button:hover:not(:disabled) { border-color: var(--green); }
+.choices .num {
+  width: 32px; height: 32px; flex: none; display: grid; place-items: center;
+  border-radius: 50%; background: var(--mint); color: var(--green); font-size: 16px;
+}
+.choices button.right { background: var(--mint); border-color: var(--green); }
+.choices button.right .num { background: var(--green); color: #fff; }
+.choices button.wrong { border-color: var(--orange); color: #8a3d00; }
+.choices button.wrong .num { background: var(--orange-tint); color: #8a3d00; }
+.choices button:disabled { cursor: default; }
+.answer { margin: 14px 4px 0; min-height: 1.6em; font-size: 15px; color: var(--ink-soft); }
+.answer b { color: var(--green); }
+
+/* 앱 화면 소개 */
+section { padding: 104px 0; }
+h2 {
+  margin: 0 0 14px; font-size: clamp(28px, 3.4vw, 42px);
+  line-height: 1.25; letter-spacing: -0.03em; font-weight: 800; text-wrap: balance;
+}
+.section-lead { margin: 0 0 56px; font-size: 18px; color: var(--ink-soft); max-width: 34em; }
+.screens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; }
+.screens figure { margin: 0; }
+.phone {
+  border-radius: 36px; padding: 10px; background: var(--navy);
+  box-shadow: 0 24px 48px -28px rgba(8, 36, 64, 0.6);
+}
+.phone img { border-radius: 27px; width: 100%; height: auto; aspect-ratio: 540 / 1100; object-fit: cover; object-position: top; }
+.screens figcaption { margin-top: 22px; }
+.screens h3 { margin: 0 0 4px; font-size: 21px; letter-spacing: -0.02em; }
+.screens p { margin: 0; color: var(--ink-soft); font-size: 16px; }
+.screens figure:nth-child(2) { margin-top: 56px; }
+
+/* 설치 안내: 네이비 바탕 */
+.install { background: var(--navy); color: #fff; }
+.install .section-lead { color: #b9cadb; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: step; }
+.steps li {
+  counter-increment: step;
+  background: #11314f; border-radius: 24px; padding: 30px 28px 32px;
+}
+.steps li::before {
+  content: counter(step);
+  display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 20px;
+  border-radius: 50%; background: var(--orange); color: #fff; font-weight: 800; font-size: 20px;
+}
+.steps h3 { margin: 0 0 8px; font-size: 21px; letter-spacing: -0.02em; }
+.steps p { margin: 0; color: #c7d5e3; font-size: 16px; }
+.alarm {
+  margin-top: 28px; display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center;
+  background: var(--mint); color: var(--navy); border-radius: 24px; padding: 26px 30px;
+}
+.alarm img { width: 88px; height: 88px; object-fit: contain; }
+.alarm h3 { margin: 0 0 6px; font-size: 20px; }
+.alarm p { margin: 0; color: var(--ink-soft); font-size: 16px; }
+.install .get { margin-top: 56px; }
+.install .download { background: var(--orange); box-shadow: 0 10px 24px -12px rgba(239, 107, 0, 0.7); }
+.install .download:hover { background: #d65f00; }
+.install .meta { color: #b9cadb; margin: 0; }
+
+footer { padding: 40px 0 56px; font-size: 14px; color: var(--ink-soft); }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+footer a { text-underline-offset: 3px; }
+
+@media (max-width: 900px) {
+  .hero { padding-bottom: 64px; }
+  .hero .wrap { grid-template-columns: 1fr; gap: 44px; }
+  section { padding: 76px 0; }
+  .screens { grid-template-columns: repeat(3, 72%); overflow-x: auto; scroll-snap-type: x mandatory; gap: 20px; padding-bottom: 12px; margin-inline: -20px; padding-inline: 20px; }
+  .screens figure { scroll-snap-align: center; }
+  .screens figure:nth-child(2) { margin-top: 0; }
+  .steps { grid-template-columns: 1fr; }
+}
+/* 휴대폰에서는 QR 대신 버튼만 (이미 휴대폰으로 보고 있으니) */
+@media (max-width: 700px), (pointer: coarse) {
+  .qr { display: none; }
+  .download { width: 100%; justify-content: center; }
+  .get { display: block; }
+}
+@media (max-width: 480px) {
+  .quiz { padding: 16px; border-radius: 26px; }
+  .alarm { grid-template-columns: 1fr; padding: 22px; }
+  .alarm img { width: 64px; height: 64px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <img src="img/icon.png" alt="" width="40" height="40">
+    <strong>에르</strong>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <h1>헷갈리던 우리말,<br><em>하루 5문제</em>로 정리해요</h1>
+        <p class="lead">공식적인 자리에서 쓰는 말부터 요즘 잘 안 쓰는 격식어까지. 병아리 에르와 짧은 퀴즈로 익히고, 틀린 단어는 다시 풀어요.</p>
+        <div class="get">
+          <div>
+            <a class="download" id="get-apk" href="https://github.com/Salkogi07/OpenSoftware-Project/releases/latest/download/erre.apk">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>
+              안드로이드 앱 내려받기
+            </a>
+            <p class="meta" data-release>안드로이드 전용 · APK 파일</p>
+            <p class="ios-note">아이폰에서는 설치할 수 없어요. 안드로이드 휴대폰에서 이 페이지를 열어 주세요.</p>
+          </div>
+          <div class="qr">
+            <img src="img/qr.svg" alt="이 페이지로 연결되는 QR코드" width="96" height="96">
+            <p>휴대폰 카메라로 찍으면 이 페이지가 열려요.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="quiz" id="quiz">
+        <div class="quiz-head">
+          <img src="img/chick_mascot_transparent.webp" alt="고민하는 병아리 에르" width="84" height="84" data-mascot>
+          <span class="bubble">가장 알맞은 답을 골라 보세요.</span>
+        </div>
+        <div class="question-box">
+          <p class="question">“어떤 사실을 알려 줌”이라는 뜻을 나타내는 표현은?</p>
+        </div>
+        <ol class="choices">
+          <li><button type="button" data-correct><span class="num">1</span>통보</button></li>
+          <li><button type="button"><span class="num">2</span>선임</button></li>
+          <li><button type="button"><span class="num">3</span>방침</button></li>
+          <li><button type="button"><span class="num">4</span>토론</button></li>
+        </ol>
+        <p class="answer" aria-live="polite">앱에 실제로 나오는 문제예요. 눌러서 풀어 보세요.</p>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <h2>앱에서는 이렇게 배워요</h2>
+      <p class="section-lead">주제와 난이도를 고르고, 퀴즈를 풀고, 내가 자주 틀리는 단어를 기록으로 확인해요.</p>
+      <div class="screens">
+        <figure>
+          <div class="phone"><img src="img/screen_study.webp" alt="학습 탭: 오늘의 추천 어휘, 단어장 복습, 주제별 학습" loading="lazy" width="540" height="1100"></div>
+          <figcaption><h3>오늘 뭘 배울지 골라요</h3><p>매일 바뀌는 추천 어휘, 틀린 단어 복습, 주제별 학습.</p></figcaption>
+        </figure>
+        <figure>
+          <div class="phone"><img src="img/screen_q.webp" alt="퀴즈 화면: 뜻을 보고 알맞은 표현 고르기" loading="lazy" width="540" height="1100"></div>
+          <figcaption><h3>보기 넷 중 하나를 골라요</h3><p>하·중·상 난이도, 5문제부터 20문제까지. 풀고 나면 해설이 나와요.</p></figcaption>
+        </figure>
+        <figure>
+          <div class="phone"><img src="img/screen_record.webp" alt="기록 탭: 이번 주 풀이 수, 정답률, 주간 학습 그래프" loading="lazy" width="540" height="1100"></div>
+          <figcaption><h3>한 주를 돌아봐요</h3><p>주간 학습량과 정답률, 자주 틀리는 단어, 다른 학습자와의 랭킹.</p></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="install" id="install">
+    <div class="wrap">
+      <h2>설치는 세 단계면 끝나요</h2>
+      <p class="section-lead">플레이 스토어가 아닌 파일로 설치하는 방식이라, 처음 한 번만 허용이 필요해요.</p>
+      <ol class="steps">
+        <li><h3>파일 내려받기</h3><p>안드로이드 휴대폰에서 내려받기 버튼을 눌러요. 다 받아지면 알림이나 ‘내 파일 → 다운로드’에서 파일을 열어요.</p></li>
+        <li><h3>설치 허용하기</h3><p>“출처를 알 수 없는 앱” 안내가 나오면 설정에서 이 출처 허용을 켜고 돌아와요.</p></li>
+        <li><h3>설치하고 가입하기</h3><p>설치를 누르고 앱을 열어 이메일로 가입하면 바로 시작할 수 있어요.</p></li>
+      </ol>
+      <div class="alarm">
+        <img src="img/chick_reading.webp" alt="" width="88" height="88">
+        <div>
+          <h3>매일 학습 알림을 받으려면</h3>
+          <p>마이 → 알림 설정에서 시간을 고른 뒤, ‘알람 및 리마인더’ 허용을 켜 주세요. 갤럭시에서 알림이 늦으면 설정 → 애플리케이션 → 에르 → 배터리를 ‘제한 없음’으로 바꿔요.</p>
+        </div>
+      </div>
+      <div class="get">
+        <a class="download" href="https://github.com/Salkogi07/OpenSoftware-Project/releases/latest/download/erre.apk">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>
+          안드로이드 앱 내려받기
+        </a>
+        <p class="meta" data-release>안드로이드 전용 · APK 파일</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>동양미래대학교 오픈소프트웨어 팀 프로젝트</span>
+    <span><a href="https://github.com/Salkogi07/OpenSoftware-Project/releases">모든 버전 보기</a> · <a href="https://github.com/Salkogi07/OpenSoftware-Project">GitHub 저장소</a></span>
+  </div>
+</footer>
+
+<script>
+// 아이폰이면 설치할 수 없다는 안내를 보여 줌
+if (/iPhone|iPad|iPod/.test(navigator.userAgent)) document.documentElement.classList.add('is-ios');
+
+// 맛보기 문제: 고르면 정답을 보여 주고 병아리가 기뻐함
+const quiz = document.getElementById('quiz');
+const answer = quiz.querySelector('.answer');
+const buttons = quiz.querySelectorAll('.choices button');
+buttons.forEach((button) => button.addEventListener('click', () => {
+  const correct = button.hasAttribute('data-correct');
+  buttons.forEach((b) => {
+    b.disabled = true;
+    if (b.hasAttribute('data-correct')) b.classList.add('right');
+  });
+  if (!correct) button.classList.add('wrong');
+  quiz.classList.add('solved');
+  quiz.querySelector('[data-mascot]').src = 'img/chick_celebrate.webp';
+  answer.innerHTML = correct
+    ? '<b>정답이에요!</b> ‘통보’는 어떤 사실을 알려 준다는 뜻이에요. 앱에서 이런 문제를 매일 풀 수 있어요.'
+    : '아쉬워요. 정답은 <b>‘통보’</b>, 어떤 사실을 알려 준다는 뜻이에요. 앱에서는 틀린 단어를 다시 풀 수 있어요.';
+}));
+
+// 최신 버전 번호와 파일 크기 (못 불러오면 기본 문구 그대로)
+fetch('https://api.github.com/repos/Salkogi07/OpenSoftware-Project/releases/latest')
+  .then((r) => (r.ok ? r.json() : Promise.reject()))
+  .then((release) => {
+    const apk = release.assets.find((a) => a.name === 'erre.apk');
+    if (!apk) return;
+    const text = `${release.tag_name} · ${Math.round(apk.size / 1048576)}MB · 안드로이드 전용`;
+    document.querySelectorAll('[data-release]').forEach((el) => { el.textContent = text; });
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>
