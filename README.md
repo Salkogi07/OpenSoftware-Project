@@ -2,6 +2,9 @@
 
 동양미래대학교 오픈소프트웨어 팀프로젝트 과제
 
+> 📱 **앱 설치하기: https://salkogi07.github.io/OpenSoftware-Project/**
+> 안드로이드 휴대폰에서 열고 내려받기 버튼을 누르면 됩니다. PC에서는 페이지의 QR코드를 휴대폰으로 찍으세요.
+
 ## 팀원
 
 | 학번 | 이름 | 역할 |
@@ -29,6 +32,11 @@
 ## 프로젝트 소개
 
 Flutter로 제작하는 한국어 단어 학습 애플리케이션입니다.
+
+- 설치 페이지: https://salkogi07.github.io/OpenSoftware-Project/ (`gh-pages` 브랜치)
+- 설치 파일(APK): [Releases](https://github.com/Salkogi07/OpenSoftware-Project/releases)
+
+> 📌 새 버전을 낼 때는 릴리스에 APK를 **`erre.apk` 이름으로도** 올려 주세요. 설치 페이지의 내려받기 버튼이 `releases/latest/download/erre.apk`를 가리킵니다.
 
 ## 개발 환경
 
