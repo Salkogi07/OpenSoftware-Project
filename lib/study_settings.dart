@@ -98,6 +98,13 @@ Future<bool> turnOnReminder(TimeOfDay time) async {
       true;
   if (!granted) return false;
 
+  // 정확한 알람 권한이 없으면 안드로이드가 알림을 최대 1시간까지 늦춤 (휴대폰에서 "안 온다"의 원인)
+  // 안드로이드 14부터는 기본으로 꺼져 있어서, 없으면 설정 화면을 열어 허용을 부탁함. 거절하면 늦게라도 오는 방식으로
+  final exact =
+      android == null ||
+      (await android.canScheduleExactNotifications() ?? false) ||
+      (await android.requestExactAlarmsPermission() ?? false);
+
   await _notifications.cancel(id: _reminderId);
   await _notifications.zonedSchedule(
     id: _reminderId,
@@ -112,8 +119,9 @@ Future<bool> turnOnReminder(TimeOfDay time) async {
       ),
       iOS: DarwinNotificationDetails(),
     ),
-    // 정확한 알람 권한 없이도 되는 방식: 몇 분 늦게 올 수 있음
-    androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    androidScheduleMode: exact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle,
     matchDateTimeComponents: DateTimeComponents.time, // 매일 같은 시각
   );
   await _saveReminder(time, true);

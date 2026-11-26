@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- 학습 알림: 기기를 다시 켜도 예약한 알림을 다시 걸기 위해 필요 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- 학습 알림을 정한 시각에 정확히 띄우기 위해 필요 (없으면 최대 1시간 늦게 옴). 사용자가 설정에서 허용 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <application
         android:label="에르"
         android:name="${applicationName}"
