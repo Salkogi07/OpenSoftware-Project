@@ -331,7 +331,7 @@ fetch('https://api.github.com/repos/Salkogi07/OpenSoftware-Project/releases/late
   .then((release) => {
     const apk = release.assets.find((a) => a.name === 'erre.apk');
     if (!apk) return;
-    const text = `${release.tag_name} · ${Math.round(apk.size / 1048576)}MB · 안드로이드 전용`;
+    const text = `${release.tag_name} · ${Math.round(apk.size / 1e6)}MB · 안드로이드 전용`;
     document.querySelectorAll('[data-release]').forEach((el) => { el.textContent = text; });
   })
   .catch(() => {});
