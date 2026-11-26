@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Supabase 로그인·학습 기록 저장. debug/profile에만 있어서 배포용(release) APK에서는 인터넷이 막혀 있었음 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- 학습 알림: 기기를 다시 켜도 예약한 알림을 다시 걸기 위해 필요 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
